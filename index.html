@@ -195,6 +195,19 @@
       return audioCtx;
     }
 
+    function vibrateIOS() {
+      const ctx  = getCtx();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 80;
+      gain.gain.setValueAtTime(1.0, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    }
+
     function playBeep() {
       const ctx  = getCtx();
       const osc  = ctx.createOscillator();
@@ -265,7 +278,7 @@
 
           flashScreen();
           if (navigator.vibrate) navigator.vibrate(200);
-          getCtx().resume().then(playBeep);
+          getCtx().resume().then(() => { vibrateIOS(); playBeep(); });
 
           setTimeout(() => {
             status.textContent = 'QRコードをカメラに向けてください';
