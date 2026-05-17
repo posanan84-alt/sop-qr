@@ -264,6 +264,7 @@
           counter.textContent = '読み取り回数: ' + scanCount;
 
           flashScreen();
+          if (navigator.vibrate) navigator.vibrate(200);
           getCtx().resume().then(playBeep);
 
           setTimeout(() => {
