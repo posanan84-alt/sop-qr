@@ -254,7 +254,7 @@
     }
 
     .result-progress.running {
-      animation: progressShrink 2s linear forwards;
+      animation: progressShrink 1s linear forwards;
     }
 
     @keyframes progressShrink {
@@ -302,7 +302,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
   <script>
-    const VERSION = '2026.05.18-r10';
+    const VERSION = '2026.05.18-r11';
     document.getElementById('version-footer').textContent = 'v' + VERSION;
 
     const BEEP = { vol: 0.86, freq: 2000, dur: 0.453, wave: 'sine' };
@@ -375,7 +375,7 @@
 
       // 2.5秒後に自動で閉じる
       clearTimeout(dismissTimer);
-      dismissTimer = setTimeout(hideOverlay, 2000);
+      dismissTimer = setTimeout(hideOverlay, 1000);
     }
 
     function hideOverlay() {
