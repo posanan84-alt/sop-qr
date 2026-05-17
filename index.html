@@ -137,6 +137,14 @@
       text-align: center;
     }
 
+    #version-footer {
+      font-size: 0.7rem;
+      color: #303050;
+      text-align: center;
+      padding-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+
     .flash {
       position: fixed;
       inset: 0;
@@ -178,11 +186,16 @@
 
   <p class="counter" id="counter">読み取り回数: 0</p>
 
+  <footer id="version-footer"></footer>
+
   <div class="flash" id="flash"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
   <script>
+    const VERSION = '2026.05.17-r4';
+    document.getElementById('version-footer').textContent = 'v' + VERSION;
+
     const BEEP = { vol: 0.86, freq: 2000, dur: 0.453, wave: 'sine' };
 
     let audioCtx = null;
