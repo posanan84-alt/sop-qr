@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>QR ビープ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f13;
+      color: #f0f0f0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #a0a0b0;
+      margin-top: 8px;
+    }
+
+    .camera-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 360px;
+      aspect-ratio: 1;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #1a1a24;
+      border: 2px solid #2a2a3a;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .scan-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .scan-frame {
+      width: 60%;
+      aspect-ratio: 1;
+      position: relative;
+    }
+
+    .scan-frame::before,
+    .scan-frame::after,
+    .scan-frame > span::before,
+    .scan-frame > span::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-color: #7c6fff;
+      border-style: solid;
+    }
+
+    .scan-frame::before  { top: 0;    left: 0;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    .scan-frame::after   { top: 0;    right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+    .scan-frame > span::before { bottom: 0; left: 0;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+    .scan-frame > span::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+    .scan-line {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #7c6fff, transparent);
+      animation: scanMove 2s linear infinite;
+      top: 0;
+    }
+
+    @keyframes scanMove {
+      0%   { top: 0%;   opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: #6060a0;
+      text-align: center;
+      min-height: 1.5em;
+      transition: color 0.3s;
+    }
+
+    .status.success { color: #60d080; }
+    .status.error   { color: #d06060; }
+
+    .last-result {
+      width: 100%;
+      max-width: 360px;
+      background: #1a1a24;
+      border-radius: 12px;
+      padding: 12px 16px;
+      border: 1px solid #2a2a3a;
+      min-height: 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .last-result label {
+      font-size: 0.7rem;
+      color: #5050a0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .last-result p {
+      font-size: 0.9rem;
+      color: #c0c0e0;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .counter {
+      font-size: 0.75rem;
+      color: #404060;
+      text-align: center;
+    }
+
+    #version-footer {
+      font-size: 0.7rem;
+      color: #303050;
+      text-align: center;
+      padding-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    .flash {
+      position: fixed;
+      inset: 0;
+      background: #7c6fff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .flash.active {
+      animation: flashAnim 0.3s ease-out forwards;
+    }
+
+    @keyframes flashAnim {
+      0%   { opacity: 0.35; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>QR ビープ</h1>
+
+  <div class="camera-wrap">
+    <video id="video" autoplay muted playsinline></video>
+    <div class="scan-overlay">
+      <div class="scan-frame">
+        <span></span>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="status" id="status">カメラを起動中…</p>
+
+  <div class="last-result">
+    <label>最後に読んだQR</label>
+    <p id="result-text">—</p>
+  </div>
+
+  <p class="counter" id="counter">読み取り回数: 0</p>
+
+  <footer id="version-footer"></footer>
+
+  <div class="flash" id="flash"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+  <script>
+    const VERSION = '2026.05.17-r6';
+    document.getElementById('version-footer').textContent = 'v' + VERSION;
+
+    const BEEP = { vol: 0.86, freq: 2000, dur: 0.453, wave: 'sine' };
+
+    let audioCtx = null;
+    let lastData = '';
+    let cooldownUntil = 0;
+    let scanCount = 0;
+
+    function getCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function vibrateIOS() {
+      const ctx  = getCtx();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 60;
+      gain.gain.setValueAtTime(2.0, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    }
+
+    function playBeep() {
+      const ctx  = getCtx();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = BEEP.wave;
+      osc.frequency.setValueAtTime(BEEP.freq, ctx.currentTime);
+      gain.gain.setValueAtTime(BEEP.vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + BEEP.dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + BEEP.dur + 0.05);
+    }
+
+    function flashScreen() {
+      const el = document.getElementById('flash');
+      el.classList.remove('active');
+      void el.offsetWidth;
+      el.classList.add('active');
+    }
+
+    const video  = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+    const ctx2d  = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const counter = document.getElementById('counter');
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
+        });
+        video.srcObject = stream;
+        video.addEventListener('loadedmetadata', () => {
+          status.textContent = 'QRコードをカメラに向けてください';
+          requestAnimationFrame(tick);
+        });
+      } catch (err) {
+        status.textContent = 'カメラにアクセスできません: ' + err.message;
+        status.className = 'status error';
+      }
+    }
+
+    function tick() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx2d.drawImage(video, 0, 0);
+
+        const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
+
+        const now = Date.now();
+        if (code && (code.data !== lastData || now > cooldownUntil)) {
+          lastData = code.data;
+          cooldownUntil = now + 2000;
+
+          document.getElementById('result-text').textContent = code.data;
+          status.textContent = '読み取り成功！';
+          status.className = 'status success';
+
+          scanCount++;
+          counter.textContent = '読み取り回数: ' + scanCount;
+
+          flashScreen();
+          if (navigator.vibrate) navigator.vibrate(200);
+          getCtx().resume().then(() => { vibrateIOS(); playBeep(); });
+
+          setTimeout(() => {
+            status.textContent = 'QRコードをカメラに向けてください';
+            status.className = 'status';
+          }, 1500);
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    startCamera();
+  </script>
+</body>
+</html>
