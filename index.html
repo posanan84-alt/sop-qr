@@ -118,17 +118,7 @@
     .scan-frame > span::before { bottom:0; left:0;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
     .scan-frame > span::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
 
-    .scan-line {
-      position: absolute; left:0; right:0; height:2px;
-      background: linear-gradient(90deg, transparent, #7c6fff, transparent);
-      animation: scanMove 2s linear infinite; top:0;
-    }
-    @keyframes scanMove {
-      0%  { top:0%;   opacity:0; }
-      10% { opacity:1; }
-      90% { opacity:1; }
-      100%{ top:100%; opacity:0; }
-    }
+    .scan-line { display: none; }
 
     /* ── ステータス ── */
     .status {
@@ -283,7 +273,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION = '2026.05.18-r13';
+  const VERSION = '2026.05.18-r14';
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
