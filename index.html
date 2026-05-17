@@ -194,20 +194,27 @@
     .ov-label.err { color: #d06060; }
 
     .ov-name {
-      font-size: clamp(1.5rem, 7vw, 2.4rem);
+      font-size: clamp(2rem, 10vw, 3.2rem);
       font-weight: 800; color: #fff;
       text-align: center; line-height: 1.2;
-      margin-bottom: 6px;
+      margin-bottom: 10px;
     }
 
-    .ov-meta { font-size: 0.85rem; color: #6060a0; text-align: center; }
+    .ov-meta { font-size: 1rem; color: #6060a0; text-align: center; }
+
+    .ov-welcome {
+      margin-top: 16px;
+      font-size: clamp(1rem, 4vw, 1.4rem);
+      font-weight: 700; color: #c0f0d0;
+      text-align: center;
+    }
 
     .ov-sub {
       margin-top: 8px; font-size: 0.78rem;
       color: #404060; text-align: center; min-height: 1.2em;
     }
 
-    .ov-hint { margin-top: 28px; font-size: 0.7rem; color: #303050; }
+    .ov-hint { margin-top: 24px; font-size: 0.7rem; color: #303050; }
 
     .ov-progress {
       position: absolute; bottom:0; left:0;
@@ -262,9 +269,10 @@
     <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
   </div>
   <p class="ov-label ok" id="ovLabel">受付完了</p>
-  <p class="ov-name"     id="ovName"></p>
-  <p class="ov-meta"     id="ovMeta"></p>
-  <p class="ov-sub"      id="ovSub"></p>
+  <p class="ov-name"    id="ovName"></p>
+  <p class="ov-meta"    id="ovMeta"></p>
+  <p class="ov-welcome" id="ovWelcome">ご来校ありがとうございます！</p>
+  <p class="ov-sub"     id="ovSub">記録中…</p>
   <p class="ov-hint">タップで閉じる</p>
   <div class="ov-progress" id="ovProgress"></div>
 </div>
@@ -273,7 +281,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION = '2026.05.18-r17';
+  const VERSION = '2026.05.18-r18';
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -388,9 +396,10 @@
     label.textContent = type === 'ok' ? '受付完了' : 'エラー';
     label.className   = 'ov-label ' + type;
 
-    document.getElementById('ovName').textContent = name || '';
-    document.getElementById('ovMeta').textContent = meta || '';
-    document.getElementById('ovSub').textContent  = sub  || '';
+    document.getElementById('ovName').textContent    = name || '';
+    document.getElementById('ovMeta').textContent    = meta || '';
+    document.getElementById('ovWelcome').style.display = type === 'ok' ? '' : 'none';
+    document.getElementById('ovSub').textContent     = '記録中…';
 
     // アニメーションリセット
     icon.style.animation = 'none'; void icon.offsetWidth; icon.style.animation = '';
@@ -465,7 +474,7 @@
     // GAS送信してサブテキスト更新
     try {
       await submitAttendance(memberId, fullName);
-      document.getElementById('ovSub').textContent = 'ご来校ありがとうございます！';
+      document.getElementById('ovSub').textContent = '✓ 記録完了';
     } catch (err) {
       document.getElementById('ovSub').textContent = '⚠ 記録に失敗しました';
     }
