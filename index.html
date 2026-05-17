@@ -3,34 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>QR ビープ</title>
+  <meta name="theme-color" content="#0f0f13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>QR受付 | S.O.P. Dance School</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
       background: #0f0f13;
       color: #f0f0f0;
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px;
-      gap: 16px;
     }
 
-    h1 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      color: #a0a0b0;
-      margin-top: 8px;
+    /* ── ヘッダー ── */
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid #1e1e2e;
+      flex-shrink: 0;
     }
 
+    .hd-school {
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      color: #5050a0;
+      text-transform: uppercase;
+    }
+
+    .hd-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #c0c0e0;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cache-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #303050;
+      flex-shrink: 0;
+      transition: background 0.4s;
+    }
+    .cache-dot.ready { background: #40c070; }
+
+    .hd-time { text-align: right; }
+
+    .hd-date {
+      font-size: 0.65rem;
+      color: #5050a0;
+    }
+
+    .hd-clock {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #7c6fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── メイン ── */
+    .main {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 16px;
+      gap: 12px;
+    }
+
+    /* ── カメラ ── */
     .camera-wrap {
       position: relative;
       width: 100%;
-      max-width: 360px;
+      max-width: 370px;
       aspect-ratio: 1;
       border-radius: 16px;
       overflow: hidden;
@@ -39,407 +95,437 @@
     }
 
     #video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
     }
 
     .scan-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
       pointer-events: none;
     }
 
-    .scan-frame {
-      width: 60%;
-      aspect-ratio: 1;
-      position: relative;
-    }
+    .scan-frame { width: 60%; aspect-ratio: 1; position: relative; }
 
-    .scan-frame::before,
-    .scan-frame::after,
-    .scan-frame > span::before,
-    .scan-frame > span::after {
-      content: '';
-      position: absolute;
-      width: 24px;
-      height: 24px;
-      border-color: #7c6fff;
-      border-style: solid;
+    .scan-frame::before, .scan-frame::after,
+    .scan-frame > span::before, .scan-frame > span::after {
+      content: ''; position: absolute;
+      width: 24px; height: 24px;
+      border-color: #7c6fff; border-style: solid;
     }
-
-    .scan-frame::before  { top: 0;    left: 0;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-    .scan-frame::after   { top: 0;    right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-    .scan-frame > span::before { bottom: 0; left: 0;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-    .scan-frame > span::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+    .scan-frame::before  { top:0;    left:0;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+    .scan-frame::after   { top:0;    right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+    .scan-frame > span::before { bottom:0; left:0;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+    .scan-frame > span::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
 
     .scan-line {
-      position: absolute;
-      left: 0; right: 0;
-      height: 2px;
+      position: absolute; left:0; right:0; height:2px;
       background: linear-gradient(90deg, transparent, #7c6fff, transparent);
-      animation: scanMove 2s linear infinite;
-      top: 0;
+      animation: scanMove 2s linear infinite; top:0;
     }
-
     @keyframes scanMove {
-      0%   { top: 0%;   opacity: 0; }
-      10%  { opacity: 1; }
-      90%  { opacity: 1; }
-      100% { top: 100%; opacity: 0; }
+      0%  { top:0%;   opacity:0; }
+      10% { opacity:1; }
+      90% { opacity:1; }
+      100%{ top:100%; opacity:0; }
     }
 
+    /* ── ステータス ── */
     .status {
-      font-size: 0.85rem;
-      color: #6060a0;
-      text-align: center;
-      min-height: 1.5em;
-      transition: color 0.3s;
+      font-size: 0.82rem; color: #6060a0;
+      text-align: center; min-height: 1.5em;
+    }
+    .status.error { color: #d06060; }
+
+    /* ── 最後の会員カード ── */
+    .last-card {
+      width: 100%; max-width: 370px;
+      background: #1a1a24; border-radius: 12px;
+      padding: 12px 16px; border: 1px solid #2a2a3a;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .last-card label {
+      font-size: 0.65rem; color: #5050a0;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .last-name   { font-size: 1rem; font-weight: 700; color: #e0e0f0; }
+    .last-member { font-size: 0.75rem; color: #6060a0; }
+
+    .counter { font-size: 0.72rem; color: #404060; }
+
+    footer {
+      font-size: 0.65rem; color: #252540;
+      padding: 10px; letter-spacing: 0.05em;
     }
 
-    .status.success { color: #60d080; }
-    .status.error   { color: #d06060; }
-
-    .last-result {
-      width: 100%;
-      max-width: 360px;
-      background: #1a1a24;
-      border-radius: 12px;
-      padding: 12px 16px;
-      border: 1px solid #2a2a3a;
-      min-height: 56px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .last-result label {
-      font-size: 0.7rem;
-      color: #5050a0;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .last-result p {
-      font-size: 0.9rem;
-      color: #c0c0e0;
-      word-break: break-all;
-      line-height: 1.4;
-    }
-
-    .counter {
-      font-size: 0.75rem;
-      color: #404060;
-      text-align: center;
-    }
-
-    #version-footer {
-      font-size: 0.7rem;
-      color: #303050;
-      text-align: center;
-      padding-bottom: 12px;
-      letter-spacing: 0.05em;
-    }
-
-    /* フラッシュ */
+    /* ── フラッシュ ── */
     .flash {
-      position: fixed;
-      inset: 0;
-      background: #7c6fff;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 100;
+      position: fixed; inset: 0;
+      background: #7c6fff; opacity: 0;
+      pointer-events: none; z-index: 100;
     }
+    .flash.active { animation: flashAnim 0.25s ease-out forwards; }
+    @keyframes flashAnim { 0%{ opacity:0.4; } 100%{ opacity:0; } }
 
-    .flash.active {
-      animation: flashAnim 0.25s ease-out forwards;
-    }
-
-    @keyframes flashAnim {
-      0%   { opacity: 0.4; }
-      100% { opacity: 0; }
-    }
-
-    /* 読み取り結果オーバーレイ */
+    /* ── 結果オーバーレイ ── */
     #result-overlay {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: rgba(10, 10, 18, 0.92);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      z-index: 200;
-      padding: 32px;
-      opacity: 0;
-      pointer-events: none;
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(10,10,18,0.93);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 200; padding: 32px;
+      opacity: 0; pointer-events: none;
       transition: opacity 0.2s ease;
     }
+    #result-overlay.visible { opacity:1; pointer-events:auto; }
 
-    #result-overlay.visible {
-      opacity: 1;
-      pointer-events: auto;
+    .ov-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px;
+    }
+    .ov-icon.ok  { background:#7c6fff; box-shadow:0 0 40px #7c6fff80; }
+    .ov-icon.err { background:#6f2020; box-shadow:0 0 40px #6f202080; }
+    .ov-icon svg {
+      width:32px; height:32px; stroke:#fff;
+      stroke-width:3; fill:none;
+      stroke-linecap:round; stroke-linejoin:round;
+    }
+    .ov-icon { animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+    @keyframes popIn { 0%{transform:scale(0.5);opacity:0;} 100%{transform:scale(1);opacity:1;} }
+
+    .ov-label {
+      font-size: 0.7rem; letter-spacing: 0.12em;
+      text-transform: uppercase; margin-bottom: 10px;
+    }
+    .ov-label.ok  { color: #7c6fff; }
+    .ov-label.err { color: #d06060; }
+
+    .ov-name {
+      font-size: clamp(1.5rem, 7vw, 2.4rem);
+      font-weight: 800; color: #fff;
+      text-align: center; line-height: 1.2;
+      margin-bottom: 6px;
     }
 
-    .result-check {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: #7c6fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 24px;
-      box-shadow: 0 0 40px #7c6fff80;
-      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    .ov-meta { font-size: 0.85rem; color: #6060a0; text-align: center; }
+
+    .ov-sub {
+      margin-top: 8px; font-size: 0.78rem;
+      color: #404060; text-align: center; min-height: 1.2em;
     }
 
-    @keyframes popIn {
-      0%   { transform: scale(0.5); opacity: 0; }
-      100% { transform: scale(1);   opacity: 1; }
-    }
+    .ov-hint { margin-top: 28px; font-size: 0.7rem; color: #303050; }
 
-    .result-check svg {
-      width: 32px;
-      height: 32px;
-      stroke: #fff;
-      stroke-width: 3;
-      fill: none;
-      stroke-linecap: round;
-      stroke-linejoin: round;
+    .ov-progress {
+      position: absolute; bottom:0; left:0;
+      height: 3px; background: #7c6fff;
+      width: 100%; transform-origin: left;
     }
-
-    .result-label {
-      font-size: 0.75rem;
-      color: #7c6fff;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 12px;
+    .ov-progress.run {
+      animation: shrink var(--dur, 3s) linear forwards;
     }
-
-    .result-value {
-      font-size: clamp(1.2rem, 5vw, 2rem);
-      font-weight: 700;
-      color: #ffffff;
-      text-align: center;
-      word-break: break-all;
-      line-height: 1.3;
-      max-height: 40vh;
-      overflow-y: auto;
-      padding: 0 8px;
-    }
-
-    .result-hint {
-      margin-top: 32px;
-      font-size: 0.75rem;
-      color: #404060;
-    }
-
-    /* プログレスバー（自動消去カウント） */
-    .result-progress {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      height: 3px;
-      background: #7c6fff;
-      width: 100%;
-      transform-origin: left;
-      animation: none;
-    }
-
-    .result-progress.running {
-      animation: progressShrink 1s linear forwards;
-    }
-
-    @keyframes progressShrink {
-      0%   { transform: scaleX(1); }
-      100% { transform: scaleX(0); }
-    }
+    @keyframes shrink { 0%{transform:scaleX(1);} 100%{transform:scaleX(0);} }
   </style>
 </head>
 <body>
-  <h1>QR ビープ</h1>
 
+<header>
+  <div>
+    <div class="hd-school">S.O.P. Dance School</div>
+    <div class="hd-title">
+      QR受付
+      <span class="cache-dot" id="cacheDot" title="会員データ読込中…"></span>
+    </div>
+  </div>
+  <div class="hd-time">
+    <div class="hd-date"  id="hdDate">---</div>
+    <div class="hd-clock" id="hdClock">--:--</div>
+  </div>
+</header>
+
+<div class="main">
   <div class="camera-wrap">
     <video id="video" autoplay muted playsinline></video>
     <div class="scan-overlay">
-      <div class="scan-frame">
-        <span></span>
-        <div class="scan-line"></div>
-      </div>
+      <div class="scan-frame"><span></span><div class="scan-line"></div></div>
     </div>
   </div>
 
   <p class="status" id="status">カメラを起動中…</p>
 
-  <div class="last-result">
-    <label>最後に読んだQR</label>
-    <p id="result-text">—</p>
+  <div class="last-card">
+    <label>最後に受付した会員</label>
+    <p class="last-name"   id="lastName">—</p>
+    <p class="last-member" id="lastMemberId"></p>
   </div>
 
-  <p class="counter" id="counter">読み取り回数: 0</p>
-  <footer id="version-footer"></footer>
+  <p class="counter" id="counter">本日の受付: 0 件</p>
+</div>
 
-  <!-- 読み取り結果オーバーレイ -->
-  <div id="result-overlay">
-    <div class="result-check">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
-    <p class="result-label">読み取り完了</p>
-    <p class="result-value" id="overlay-text"></p>
-    <p class="result-hint">タップで閉じる</p>
-    <div class="result-progress" id="result-progress"></div>
+<footer id="versionFooter"></footer>
+
+<div id="result-overlay">
+  <div class="ov-icon ok" id="ovIcon">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
   </div>
+  <p class="ov-label ok" id="ovLabel">受付完了</p>
+  <p class="ov-name"     id="ovName"></p>
+  <p class="ov-meta"     id="ovMeta"></p>
+  <p class="ov-sub"      id="ovSub"></p>
+  <p class="ov-hint">タップで閉じる</p>
+  <div class="ov-progress" id="ovProgress"></div>
+</div>
 
-  <div class="flash" id="flash"></div>
+<div class="flash" id="flash"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+  const VERSION = '2026.05.18-r13';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
+  const OVERLAY_SEC = 3;
 
-  <script>
-    const VERSION = '2026.05.18-r11';
-    document.getElementById('version-footer').textContent = 'v' + VERSION;
+  document.getElementById('versionFooter').textContent = 'v' + VERSION;
 
-    const BEEP = { vol: 0.86, freq: 2000, dur: 0.453, wave: 'sine' };
+  // ── 状態 ────────────────────────────────────────────
+  let memberCache   = null;
+  let lastScanned   = '';
+  let cooldownUntil = 0;
+  let scanCount     = 0;
+  let dismissTimer  = null;
+  let audioCtx      = null;
 
-    let audioCtx = null;
-    let lastData = '';
-    let cooldownUntil = 0;
-    let scanCount = 0;
-    let dismissTimer = null;
+  // ── 時計 ────────────────────────────────────────────
+  const WD = ['日','月','火','水','木','金','土'];
+  function updateClock() {
+    const n = new Date();
+    document.getElementById('hdDate').textContent =
+      n.getFullYear() + '年' +
+      String(n.getMonth()+1).padStart(2,'0') + '月' +
+      String(n.getDate()).padStart(2,'0') + '日（' + WD[n.getDay()] + '）';
+    document.getElementById('hdClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0');
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
 
-    function getCtx() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      return audioCtx;
+  // ── 会員キャッシュ ──────────────────────────────────
+  async function warmupMembers() {
+    try {
+      const res    = await fetch(GAS_URL + '?action=getAllMembers');
+      const result = await res.json();
+      if (result.success) {
+        memberCache = result.members;
+        const dot = document.getElementById('cacheDot');
+        dot.classList.add('ready');
+        dot.title = '会員データ ' + Object.keys(memberCache).length + '件 読込済';
+      }
+    } catch (_) {}
+  }
+
+  function findMember(memberId) {
+    if (memberCache && memberCache[memberId]) {
+      const m = memberCache[memberId];
+      return m.lastName + '　' + m.firstName;
+    }
+    return null;
+  }
+
+  // ── QR解析 ──────────────────────────────────────────
+  function extractMemberId(text) {
+    const m = text.match(/\/r\/(\d{6})\/?$/);
+    if (m) return m[1];
+    if (/^\d{6}$/.test(text.trim())) return text.trim();
+    return null;
+  }
+
+  // ── 音 ──────────────────────────────────────────────
+  function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playBeep() {
+    const ctx = getCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2000, ctx.currentTime);
+    gain.gain.setValueAtTime(0.86, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.453);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+  }
+
+  function playBass() {
+    const ctx = getCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.frequency.value = 60;
+    gain.gain.setValueAtTime(2.0, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.3);
+  }
+
+  function playError() {
+    const ctx = getCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.setValueAtTime(180, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.45);
+  }
+
+  // ── フラッシュ ───────────────────────────────────────
+  function flashScreen() {
+    const el = document.getElementById('flash');
+    el.classList.remove('active'); void el.offsetWidth; el.classList.add('active');
+  }
+
+  // ── オーバーレイ ─────────────────────────────────────
+  const overlay = document.getElementById('result-overlay');
+
+  function showOverlay({ name, meta, sub, type = 'ok', sec = OVERLAY_SEC }) {
+    const icon = document.getElementById('ovIcon');
+    icon.className = 'ov-icon ' + type;
+    icon.innerHTML = type === 'ok'
+      ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
+      : '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+    const label = document.getElementById('ovLabel');
+    label.textContent = type === 'ok' ? '受付完了' : 'エラー';
+    label.className   = 'ov-label ' + type;
+
+    document.getElementById('ovName').textContent = name || '';
+    document.getElementById('ovMeta').textContent = meta || '';
+    document.getElementById('ovSub').textContent  = sub  || '';
+
+    // アニメーションリセット
+    icon.style.animation = 'none'; void icon.offsetWidth; icon.style.animation = '';
+
+    const prog = document.getElementById('ovProgress');
+    prog.style.setProperty('--dur', sec + 's');
+    prog.classList.remove('run'); void prog.offsetWidth; prog.classList.add('run');
+
+    overlay.classList.add('visible');
+    clearTimeout(dismissTimer);
+    dismissTimer = setTimeout(hideOverlay, sec * 1000);
+  }
+
+  function hideOverlay() {
+    overlay.classList.remove('visible');
+    clearTimeout(dismissTimer);
+  }
+
+  overlay.addEventListener('click', hideOverlay);
+
+  // ── GAS送信 ──────────────────────────────────────────
+  async function submitAttendance(memberId, fullName) {
+    const params = new URLSearchParams({
+      action: 'submitAttendance',
+      name: (fullName || '（名前なし）') + '　' + memberId,
+      note: '会員証QR'
+    });
+    const res    = await fetch(GAS_URL + '?' + params);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.message || '送信失敗');
+  }
+
+  // ── スキャン処理 ─────────────────────────────────────
+  async function handleScan(rawText) {
+    const memberId = extractMemberId(rawText);
+
+    // 会員証以外のQR
+    if (!memberId) {
+      getCtx().resume().then(playError);
+      showOverlay({
+        name: '読み取りエラー',
+        meta: '会員証QRではありません',
+        sub: rawText.slice(0, 50),
+        type: 'err',
+        sec: 2
+      });
+      return;
     }
 
-    function vibrateIOS() {
-      const ctx  = getCtx();
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 60;
-      gain.gain.setValueAtTime(2.0, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+    // 音・フラッシュ・振動
+    flashScreen();
+    if (navigator.vibrate) navigator.vibrate(200);
+    getCtx().resume().then(() => { playBass(); playBeep(); });
+
+    const fullName = findMember(memberId) || '（名前なし）';
+
+    // カード更新
+    document.getElementById('lastName').textContent    = fullName;
+    document.getElementById('lastMemberId').textContent = '会員番号：' + memberId;
+    scanCount++;
+    document.getElementById('counter').textContent = '本日の受付: ' + scanCount + ' 件';
+
+    // オーバーレイ表示（まず「記録中…」）
+    showOverlay({
+      name: fullName,
+      meta: '会員番号：' + memberId,
+      sub: '記録中…',
+      type: 'ok',
+      sec: OVERLAY_SEC
+    });
+
+    // GAS送信してサブテキスト更新
+    try {
+      await submitAttendance(memberId, fullName);
+      document.getElementById('ovSub').textContent = 'ご来校ありがとうございます！';
+    } catch (err) {
+      document.getElementById('ovSub').textContent = '⚠ 記録に失敗しました';
     }
+  }
 
-    function playBeep() {
-      const ctx  = getCtx();
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = BEEP.wave;
-      osc.frequency.setValueAtTime(BEEP.freq, ctx.currentTime);
-      gain.gain.setValueAtTime(BEEP.vol, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + BEEP.dur);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + BEEP.dur + 0.05);
+  // ── カメラ ───────────────────────────────────────────
+  const video  = document.getElementById('video');
+  const canvas = document.createElement('canvas');
+  const ctx2d  = canvas.getContext('2d');
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
+      });
+      video.srcObject = stream;
+      video.addEventListener('loadedmetadata', () => {
+        document.getElementById('status').textContent = '会員証QRをかざしてください';
+        requestAnimationFrame(tick);
+      });
+    } catch (err) {
+      document.getElementById('status').textContent = 'カメラにアクセスできません';
+      document.getElementById('status').className = 'status error';
     }
+  }
 
-    function flashScreen() {
-      const el = document.getElementById('flash');
-      el.classList.remove('active');
-      void el.offsetWidth;
-      el.classList.add('active');
-    }
+  function tick() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx2d.drawImage(video, 0, 0);
 
-    // 結果オーバーレイ
-    const overlay  = document.getElementById('result-overlay');
-    const overlayText = document.getElementById('overlay-text');
-    const progress = document.getElementById('result-progress');
+      const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert'
+      });
 
-    function showOverlay(text) {
-      overlayText.textContent = text;
-
-      // チェックアニメーションをリセット
-      const check = overlay.querySelector('.result-check');
-      check.style.animation = 'none';
-      void check.offsetWidth;
-      check.style.animation = '';
-
-      // プログレスバーをリセット
-      progress.classList.remove('running');
-      void progress.offsetWidth;
-      progress.classList.add('running');
-
-      overlay.classList.add('visible');
-
-      // 2.5秒後に自動で閉じる
-      clearTimeout(dismissTimer);
-      dismissTimer = setTimeout(hideOverlay, 1000);
-    }
-
-    function hideOverlay() {
-      overlay.classList.remove('visible');
-      clearTimeout(dismissTimer);
-    }
-
-    overlay.addEventListener('click', hideOverlay);
-
-    // カメラ & スキャン
-    const video   = document.getElementById('video');
-    const canvas  = document.createElement('canvas');
-    const ctx2d   = canvas.getContext('2d');
-    const status  = document.getElementById('status');
-    const counter = document.getElementById('counter');
-
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
-        });
-        video.srcObject = stream;
-        video.addEventListener('loadedmetadata', () => {
-          status.textContent = 'QRコードをカメラに向けてください';
-          requestAnimationFrame(tick);
-        });
-      } catch (err) {
-        status.textContent = 'カメラにアクセスできません: ' + err.message;
-        status.className = 'status error';
+      const now = Date.now();
+      if (code && (code.data !== lastScanned || now > cooldownUntil)) {
+        lastScanned   = code.data;
+        cooldownUntil = now + 3000;
+        handleScan(code.data);
       }
     }
+    requestAnimationFrame(tick);
+  }
 
-    function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx2d.drawImage(video, 0, 0);
-
-        const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert'
-        });
-
-        const now = Date.now();
-        if (code && (code.data !== lastData || now > cooldownUntil)) {
-          lastData = code.data;
-          cooldownUntil = now + 2000;
-
-          document.getElementById('result-text').textContent = code.data;
-          status.textContent = 'QRコードをカメラに向けてください';
-
-          scanCount++;
-          counter.textContent = '読み取り回数: ' + scanCount;
-
-          flashScreen();
-          showOverlay(code.data);
-          if (navigator.vibrate) navigator.vibrate(200);
-          getCtx().resume().then(() => { vibrateIOS(); playBeep(); });
-        }
-      }
-      requestAnimationFrame(tick);
-    }
-
-    startCamera();
-  </script>
+  // ── 起動 ─────────────────────────────────────────────
+  warmupMembers();
+  startCamera();
+</script>
 </body>
 </html>
