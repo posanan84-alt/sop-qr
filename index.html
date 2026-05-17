@@ -145,6 +145,7 @@
       letter-spacing: 0.05em;
     }
 
+    /* フラッシュ */
     .flash {
       position: fixed;
       inset: 0;
@@ -155,12 +156,110 @@
     }
 
     .flash.active {
-      animation: flashAnim 0.3s ease-out forwards;
+      animation: flashAnim 0.25s ease-out forwards;
     }
 
     @keyframes flashAnim {
-      0%   { opacity: 0.35; }
+      0%   { opacity: 0.4; }
       100% { opacity: 0; }
+    }
+
+    /* 読み取り結果オーバーレイ */
+    #result-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 18, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 200;
+      padding: 32px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    #result-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .result-check {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #7c6fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      box-shadow: 0 0 40px #7c6fff80;
+      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes popIn {
+      0%   { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+
+    .result-check svg {
+      width: 32px;
+      height: 32px;
+      stroke: #fff;
+      stroke-width: 3;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .result-label {
+      font-size: 0.75rem;
+      color: #7c6fff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .result-value {
+      font-size: clamp(1.2rem, 5vw, 2rem);
+      font-weight: 700;
+      color: #ffffff;
+      text-align: center;
+      word-break: break-all;
+      line-height: 1.3;
+      max-height: 40vh;
+      overflow-y: auto;
+      padding: 0 8px;
+    }
+
+    .result-hint {
+      margin-top: 32px;
+      font-size: 0.75rem;
+      color: #404060;
+    }
+
+    /* プログレスバー（自動消去カウント） */
+    .result-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: #7c6fff;
+      width: 100%;
+      transform-origin: left;
+      animation: none;
+    }
+
+    .result-progress.running {
+      animation: progressShrink 2.5s linear forwards;
+    }
+
+    @keyframes progressShrink {
+      0%   { transform: scaleX(1); }
+      100% { transform: scaleX(0); }
     }
   </style>
 </head>
@@ -185,15 +284,25 @@
   </div>
 
   <p class="counter" id="counter">読み取り回数: 0</p>
-
   <footer id="version-footer"></footer>
+
+  <!-- 読み取り結果オーバーレイ -->
+  <div id="result-overlay">
+    <div class="result-check">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <p class="result-label">読み取り完了</p>
+    <p class="result-value" id="overlay-text"></p>
+    <p class="result-hint">タップで閉じる</p>
+    <div class="result-progress" id="result-progress"></div>
+  </div>
 
   <div class="flash" id="flash"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
   <script>
-    const VERSION = '2026.05.17-r7';
+    const VERSION = '2026.05.18-r9';
     document.getElementById('version-footer').textContent = 'v' + VERSION;
 
     const BEEP = { vol: 0.86, freq: 2000, dur: 0.453, wave: 'sine' };
@@ -202,6 +311,7 @@
     let lastData = '';
     let cooldownUntil = 0;
     let scanCount = 0;
+    let dismissTimer = null;
 
     function getCtx() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -225,12 +335,10 @@
       const ctx  = getCtx();
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.type = BEEP.wave;
       osc.frequency.setValueAtTime(BEEP.freq, ctx.currentTime);
       gain.gain.setValueAtTime(BEEP.vol, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + BEEP.dur);
-
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(ctx.currentTime);
@@ -244,10 +352,44 @@
       el.classList.add('active');
     }
 
-    const video  = document.getElementById('video');
-    const canvas = document.createElement('canvas');
-    const ctx2d  = canvas.getContext('2d');
-    const status = document.getElementById('status');
+    // 結果オーバーレイ
+    const overlay  = document.getElementById('result-overlay');
+    const overlayText = document.getElementById('overlay-text');
+    const progress = document.getElementById('result-progress');
+
+    function showOverlay(text) {
+      overlayText.textContent = text;
+
+      // チェックアニメーションをリセット
+      const check = overlay.querySelector('.result-check');
+      check.style.animation = 'none';
+      void check.offsetWidth;
+      check.style.animation = '';
+
+      // プログレスバーをリセット
+      progress.classList.remove('running');
+      void progress.offsetWidth;
+      progress.classList.add('running');
+
+      overlay.classList.add('visible');
+
+      // 2.5秒後に自動で閉じる
+      clearTimeout(dismissTimer);
+      dismissTimer = setTimeout(hideOverlay, 2500);
+    }
+
+    function hideOverlay() {
+      overlay.classList.remove('visible');
+      clearTimeout(dismissTimer);
+    }
+
+    overlay.addEventListener('click', hideOverlay);
+
+    // カメラ & スキャン
+    const video   = document.getElementById('video');
+    const canvas  = document.createElement('canvas');
+    const ctx2d   = canvas.getContext('2d');
+    const status  = document.getElementById('status');
     const counter = document.getElementById('counter');
 
     async function startCamera() {
@@ -283,20 +425,15 @@
           cooldownUntil = now + 2000;
 
           document.getElementById('result-text').textContent = code.data;
-          status.textContent = '読み取り成功！';
-          status.className = 'status success';
+          status.textContent = 'QRコードをカメラに向けてください';
 
           scanCount++;
           counter.textContent = '読み取り回数: ' + scanCount;
 
           flashScreen();
+          showOverlay(code.data);
           if (navigator.vibrate) navigator.vibrate(200);
           getCtx().resume().then(() => { vibrateIOS(); playBeep(); });
-
-          setTimeout(() => {
-            status.textContent = 'QRコードをカメラに向けてください';
-            status.className = 'status';
-          }, 1500);
         }
       }
       requestAnimationFrame(tick);
