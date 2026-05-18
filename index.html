@@ -148,6 +148,20 @@
       padding: 10px; letter-spacing: 0.05em;
     }
 
+    /* ── カメラ切り替えボタン ── */
+    #btnFlip {
+      position: absolute; top: 10px; right: 10px;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(15,15,19,0.6);
+      border: 1px solid #3a3a5a;
+      color: #a0a0c0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+    #btnFlip svg { width: 20px; height: 20px; }
+    #btnFlip:active { background: rgba(124,111,255,0.4); }
+
     /* ── フラッシュ ── */
     .flash {
       position: fixed; inset: 0;
@@ -249,6 +263,13 @@
     <div class="scan-overlay">
       <div class="scan-frame"><span></span><div class="scan-line"></div></div>
     </div>
+    <button id="btnFlip" onclick="flipCamera()" title="カメラ切り替え">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 7h-3a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+        <path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+        <path d="M6.5 6.5L5 5"/>
+      </svg>
+    </button>
   </div>
 
   <p class="status" id="status">カメラを起動中…</p>
@@ -281,7 +302,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION = '2026.05.18-r18';
+  const VERSION = '2026.05.18-r19';
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -485,20 +506,31 @@
   const canvas = document.createElement('canvas');
   const ctx2d  = canvas.getContext('2d');
 
+  let facingMode = 'environment';
+  let currentStream = null;
+
   async function startCamera() {
+    if (currentStream) {
+      currentStream.getTracks().forEach(t => t.stop());
+    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
+      currentStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode, width: { ideal: 640 }, height: { ideal: 640 } }
       });
-      video.srcObject = stream;
+      video.srcObject = currentStream;
       video.addEventListener('loadedmetadata', () => {
         document.getElementById('status').textContent = '会員証QRをかざしてください';
         requestAnimationFrame(tick);
-      });
+      }, { once: true });
     } catch (err) {
       document.getElementById('status').textContent = 'カメラにアクセスできません';
       document.getElementById('status').className = 'status error';
     }
+  }
+
+  function flipCamera() {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    startCamera();
   }
 
   function tick() {
