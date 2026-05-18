@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>QR受付 | S.O.P. Dance School</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* touch-action:manipulation で二重タップ拡大を全体で無効化 */
+    * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
@@ -106,6 +107,22 @@
       display: none; flex-direction: column; gap: 12px;
     }
 
+    /* サブタブ（番号 / 名前） */
+    .sub-tabs {
+      display: flex; border-radius: 10px; overflow: hidden;
+      border: 1px solid #2a2a3a;
+    }
+    .sub-tab {
+      flex: 1; padding: 9px;
+      font-size: 0.8rem; font-weight: 600;
+      text-align: center; cursor: pointer;
+      color: #5050a0; background: #1a1a24; border: none;
+      transition: color 0.2s, background 0.2s;
+    }
+    .sub-tab.active { color: #fff; background: #7c6fff; }
+    .sub-tab:first-child { border-right: 1px solid #2a2a3a; }
+
+    /* ── 番号入力ペイン ── */
     .num-display {
       background: #1a1a24; border: 2px solid #2a2a3a;
       border-radius: 12px; padding: 14px 18px;
@@ -128,8 +145,9 @@
       background: #1a1a24; border: 1px solid #2a2a3a;
       border-radius: 10px; padding: 16px 0;
       font-size: 1.4rem; font-weight: 600; color: #c0c0e0;
-      cursor: pointer; text-align: center;
-      transition: background 0.1s;
+      cursor: pointer; text-align: center; user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.08s;
     }
     .key:active { background: #2a2a4a; }
     .key.zero  { grid-column: 1; }
@@ -153,6 +171,42 @@
       color: #6060a0; font-size: 0.9rem; cursor: pointer;
     }
     .btn-clear:active { background: #1a1a24; }
+
+    /* ── 名前検索ペイン ── */
+    #namePane { display: flex; flex-direction: column; gap: 10px; }
+
+    .name-search-box {
+      background: #1a1a24; border: 2px solid #2a2a3a;
+      border-radius: 12px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .name-search-box:focus-within { border-color: #7c6fff; }
+    .name-search-box span { font-size: 1.1rem; color: #5050a0; flex-shrink: 0; }
+    #nameInput {
+      flex: 1; background: none; border: none; outline: none;
+      font-size: 1.05rem; color: #e0e0f0;
+      font-family: inherit;
+    }
+    #nameInput::placeholder { color: #404060; }
+    #nameClear {
+      background: none; border: none; color: #404060;
+      font-size: 1.2rem; cursor: pointer; padding: 2px 4px;
+      display: none;
+    }
+    #nameClear.show { display: block; }
+
+    .name-results { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+    .name-result {
+      background: #1a1a24; border: 1px solid #2a2a3a;
+      border-radius: 10px; padding: 12px 14px; cursor: pointer;
+      display: flex; flex-direction: column; gap: 3px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .name-result:active { background: #2a2a4a; border-color: #7c6fff; }
+    .nr-name { font-size: 1rem; font-weight: 700; color: #e0e0f0; }
+    .nr-kana { font-size: 0.78rem; color: #7060a0; }
+    .nr-id   { font-size: 0.72rem; color: #404060; }
+    .name-msg { font-size: 0.82rem; color: #404060; text-align: center; padding: 20px 0; }
 
     /* ── 最後の会員カード ── */
     .last-card {
@@ -262,32 +316,56 @@
 
   <!-- 手入力モード -->
   <div id="manualPanel">
-    <div class="num-display">
-      <label>会員番号（6桁）</label>
-      <div class="num-digits" id="numDigits">_ _ _ _ _ _</div>
-      <div class="num-name"   id="numName"></div>
-      <div class="num-hint"   id="numHint">テンキーで入力してください</div>
+
+    <!-- サブタブ -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" id="subTabNum"  onclick="switchSubMode('num')">🔢 番号入力</button>
+      <button class="sub-tab"        id="subTabName" onclick="switchSubMode('name')">🔤 名前検索</button>
     </div>
 
-    <div class="numpad">
-      <button class="key" ontouchstart="kInput('7')" onclick="kInput('7')">7</button>
-      <button class="key" ontouchstart="kInput('8')" onclick="kInput('8')">8</button>
-      <button class="key" ontouchstart="kInput('9')" onclick="kInput('9')">9</button>
-      <button class="key" ontouchstart="kInput('4')" onclick="kInput('4')">4</button>
-      <button class="key" ontouchstart="kInput('5')" onclick="kInput('5')">5</button>
-      <button class="key" ontouchstart="kInput('6')" onclick="kInput('6')">6</button>
-      <button class="key" ontouchstart="kInput('1')" onclick="kInput('1')">1</button>
-      <button class="key" ontouchstart="kInput('2')" onclick="kInput('2')">2</button>
-      <button class="key" ontouchstart="kInput('3')" onclick="kInput('3')">3</button>
-      <button class="key zero" ontouchstart="kInput('0')" onclick="kInput('0')">0</button>
-      <button class="key empty"></button>
-      <button class="key del"  ontouchstart="kDel()" onclick="kDel()">⌫</button>
+    <!-- 番号入力ペイン -->
+    <div id="numPane">
+      <div class="num-display">
+        <label>会員番号（6桁）</label>
+        <div class="num-digits" id="numDigits">_ _ _ _ _ _</div>
+        <div class="num-name"   id="numName"></div>
+        <div class="num-hint"   id="numHint">テンキーで入力してください</div>
+      </div>
+
+      <div class="numpad">
+        <button class="key" onclick="kInput('7')">7</button>
+        <button class="key" onclick="kInput('8')">8</button>
+        <button class="key" onclick="kInput('9')">9</button>
+        <button class="key" onclick="kInput('4')">4</button>
+        <button class="key" onclick="kInput('5')">5</button>
+        <button class="key" onclick="kInput('6')">6</button>
+        <button class="key" onclick="kInput('1')">1</button>
+        <button class="key" onclick="kInput('2')">2</button>
+        <button class="key" onclick="kInput('3')">3</button>
+        <button class="key zero" onclick="kInput('0')">0</button>
+        <button class="key empty"></button>
+        <button class="key del"  onclick="kDel()">⌫</button>
+      </div>
+
+      <div class="manual-actions">
+        <button class="btn-submit" id="btnSubmit" onclick="handleManualSubmit()" disabled>出席を記録 ✓</button>
+        <button class="btn-clear"  onclick="kClear()">クリア</button>
+      </div>
     </div>
 
-    <div class="manual-actions">
-      <button class="btn-submit" id="btnSubmit" onclick="handleManualSubmit()" disabled>出席を記録 ✓</button>
-      <button class="btn-clear"  onclick="kClear()">クリア</button>
+    <!-- 名前検索ペイン -->
+    <div id="namePane" style="display:none;">
+      <div class="name-search-box">
+        <span>🔍</span>
+        <input id="nameInput" type="search" inputmode="search" autocomplete="off" autocorrect="off"
+               spellcheck="false" placeholder="ふりがなまたは漢字で検索" oninput="onNameInput()">
+        <button id="nameClear" onclick="clearNameSearch()">✕</button>
+      </div>
+      <div class="name-results" id="nameResults">
+        <p class="name-msg">名前を入力すると候補が表示されます</p>
+      </div>
     </div>
+
   </div>
 
   <!-- 共通 -->
@@ -318,7 +396,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.18-r21';
+  const VERSION     = '2026.05.18-r22';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -332,6 +410,7 @@
   let dismissTimer  = null;
   let audioCtx      = null;
   let currentMode   = 'qr';
+  let subMode       = 'num';
   let manualVal     = '';
 
   // ── 時計 ────────────────────────────────────────────
@@ -352,7 +431,7 @@
     currentMode = mode;
     document.getElementById('tabQr').classList.toggle('active', mode === 'qr');
     document.getElementById('tabManual').classList.toggle('active', mode === 'manual');
-    document.getElementById('qrPanel').style.display    = mode === 'qr'     ? 'flex' : 'none';
+    document.getElementById('qrPanel').style.display     = mode === 'qr'     ? 'flex' : 'none';
     document.getElementById('manualPanel').style.display = mode === 'manual' ? 'flex' : 'none';
 
     if (mode === 'qr') {
@@ -360,6 +439,22 @@
     } else {
       stopCamera();
       kClear();
+    }
+  }
+
+  // ── サブモード切り替え（番号 / 名前） ──────────────
+  function switchSubMode(mode) {
+    subMode = mode;
+    document.getElementById('subTabNum').classList.toggle('active',  mode === 'num');
+    document.getElementById('subTabName').classList.toggle('active', mode === 'name');
+    document.getElementById('numPane').style.display  = mode === 'num'  ? 'flex' : 'none';
+    document.getElementById('namePane').style.display = mode === 'name' ? 'flex' : 'none';
+    if (mode === 'num') {
+      document.getElementById('numPane').style.flexDirection = 'column';
+      document.getElementById('numPane').style.gap = '12px';
+    }
+    if (mode === 'name') {
+      document.getElementById('nameInput').focus();
     }
   }
 
@@ -383,6 +478,78 @@
       return m.lastName + '　' + m.firstName;
     }
     return null;
+  }
+
+  // ── 名前検索 ────────────────────────────────────────
+  function searchMembers(query) {
+    if (!memberCache || !query.trim()) return [];
+    const q = query.trim().toLowerCase();
+    const results = [];
+    for (const [id, m] of Object.entries(memberCache)) {
+      // 全フィールドの文字列を結合して検索
+      const haystack = Object.values(m)
+        .filter(v => typeof v === 'string')
+        .join(' ')
+        .toLowerCase();
+      if (haystack.includes(q)) {
+        results.push([id, m]);
+      }
+    }
+    return results.slice(0, 8);
+  }
+
+  function getKana(m) {
+    // よくあるフィールド名を試みる
+    const last  = m.lastNameKana  || m.lastNameFurigana  || m.seiKana  || '';
+    const first = m.firstNameKana || m.firstNameFurigana || m.meiKana  || '';
+    if (last || first) return (last + '　' + first).trim();
+    return m.nameKana || m.furigana || m.kana || '';
+  }
+
+  function renderNameResults(results) {
+    const el = document.getElementById('nameResults');
+    if (!results.length) {
+      el.innerHTML = '<p class="name-msg">該当する会員が見つかりません</p>';
+      return;
+    }
+    el.innerHTML = results.map(([id, m]) => {
+      const name = (m.lastName || '') + '　' + (m.firstName || '');
+      const kana = getKana(m);
+      return `<div class="name-result" onclick="selectMember('${id}')">
+        <div class="nr-name">${name}</div>
+        ${kana ? `<div class="nr-kana">${kana}</div>` : ''}
+        <div class="nr-id">会員番号：${id}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function onNameInput() {
+    const q = document.getElementById('nameInput').value;
+    document.getElementById('nameClear').classList.toggle('show', q.length > 0);
+    if (!q.trim()) {
+      document.getElementById('nameResults').innerHTML =
+        '<p class="name-msg">名前を入力すると候補が表示されます</p>';
+      return;
+    }
+    if (!memberCache) {
+      document.getElementById('nameResults').innerHTML =
+        '<p class="name-msg">会員データ読込中…</p>';
+      return;
+    }
+    renderNameResults(searchMembers(q));
+  }
+
+  function clearNameSearch() {
+    document.getElementById('nameInput').value = '';
+    document.getElementById('nameClear').classList.remove('show');
+    document.getElementById('nameResults').innerHTML =
+      '<p class="name-msg">名前を入力すると候補が表示されます</p>';
+    document.getElementById('nameInput').focus();
+  }
+
+  async function selectMember(memberId) {
+    await processCheckin(memberId, '手入力（名前検索）');
+    clearNameSearch();
   }
 
   // ── QR解析 ──────────────────────────────────────────
@@ -446,10 +613,10 @@
     label.textContent = type === 'ok' ? '受付完了' : 'エラー';
     label.className   = 'ov-label ' + type;
 
-    document.getElementById('ovName').textContent           = name || '';
-    document.getElementById('ovMeta').textContent           = meta || '';
-    document.getElementById('ovWelcome').style.display      = type === 'ok' ? '' : 'none';
-    document.getElementById('ovSub').textContent            = '記録中…';
+    document.getElementById('ovName').textContent      = name || '';
+    document.getElementById('ovMeta').textContent      = meta || '';
+    document.getElementById('ovWelcome').style.display = type === 'ok' ? '' : 'none';
+    document.getElementById('ovSub').textContent       = '記録中…';
 
     icon.style.animation = 'none'; void icon.offsetWidth; icon.style.animation = '';
 
@@ -537,7 +704,6 @@
     const btn    = document.getElementById('btnSubmit');
     const len    = manualVal.length;
 
-    // 桁表示
     const filled = manualVal.split('');
     const blanks = Array(6 - len).fill('_');
     el.textContent = [...filled, ...blanks].join(' ');
