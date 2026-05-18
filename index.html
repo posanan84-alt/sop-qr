@@ -402,7 +402,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.18-r23';
+  const VERSION     = '2026.05.19-r24';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -487,22 +487,49 @@
   }
 
   // ── 名前検索 ────────────────────────────────────────
+  // カタカナ→ひらがな変換（検索時に統一）
+  function toHira(str) {
+    return str.replace(/[ァ-ヶ]/g, c =>
+      String.fromCharCode(c.charCodeAt(0) - 0x60)
+    );
+  }
+  // スペース正規化（全角→半角、連続→1つ）
+  function normStr(str) {
+    return toHira(str.replace(/　/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase());
+  }
+
   function searchMembers(query) {
     if (!memberCache || !query.trim()) return [];
-    const q = query.trim().toLowerCase();
+    const terms = normStr(query).split(' ').filter(t => t.length > 0);
+    if (!terms.length) return [];
     const results = [];
     for (const [id, m] of Object.entries(memberCache)) {
-      // 全フィールドの文字列を結合して検索
-      const haystack = Object.values(m)
+      // 各フィールドを正規化したリスト
+      const fields = Object.values(m)
         .filter(v => typeof v === 'string')
-        .join(' ')
-        .toLowerCase();
-      if (haystack.includes(q)) {
-        results.push([id, m]);
-      }
+        .map(v => normStr(v));
+      // 各検索ワードが「いずれかのフィールドの先頭」に一致するか（前方一致）
+      const matched = terms.every(term =>
+        fields.some(field => field.startsWith(term))
+      );
+      if (matched) results.push([id, m]);
     }
     return results.slice(0, 8);
   }
+
+  // デバッグ: 会員データ構造を確認する関数（コンソールから呼べます）
+  window.debugMember = function(name) {
+    if (!memberCache) { console.log('キャッシュ未読込'); return; }
+    const q = normStr(name);
+    Object.entries(memberCache).forEach(([id, m]) => {
+      const hay = normStr(Object.values(m).filter(v=>typeof v==='string').join(' '));
+      if (hay.includes(q.split(' ')[0])) {
+        console.log('--- 会員ID:', id);
+        console.log('  フィールド:', JSON.stringify(m, null, 2));
+        console.log('  検索文字列:', hay);
+      }
+    });
+  };
 
   function getKana(m) {
     // よくあるフィールド名を試みる
