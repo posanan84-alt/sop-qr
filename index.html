@@ -29,103 +29,130 @@
       border-bottom: 1px solid #1e1e2e;
       flex-shrink: 0;
     }
-
-    .hd-school {
-      font-size: 0.6rem;
-      letter-spacing: 0.15em;
-      color: #5050a0;
-      text-transform: uppercase;
-    }
-
-    .hd-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #c0c0e0;
-      margin-top: 2px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .cache-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #303050;
-      flex-shrink: 0;
-      transition: background 0.4s;
-    }
+    .hd-school { font-size: 0.6rem; letter-spacing: 0.15em; color: #5050a0; text-transform: uppercase; }
+    .hd-title  { font-size: 1rem; font-weight: 700; color: #c0c0e0; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+    .cache-dot { width: 7px; height: 7px; border-radius: 50%; background: #303050; flex-shrink: 0; transition: background 0.4s; }
     .cache-dot.ready { background: #40c070; }
+    .hd-time   { text-align: right; }
+    .hd-date   { font-size: 0.65rem; color: #5050a0; }
+    .hd-clock  { font-size: 1.25rem; font-weight: 700; color: #7c6fff; font-variant-numeric: tabular-nums; }
 
-    .hd-time { text-align: right; }
-
-    .hd-date {
-      font-size: 0.65rem;
-      color: #5050a0;
+    /* ── モードタブ ── */
+    .mode-tabs {
+      width: 100%; display: flex;
+      border-bottom: 1px solid #1e1e2e;
     }
-
-    .hd-clock {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #7c6fff;
-      font-variant-numeric: tabular-nums;
+    .mode-tab {
+      flex: 1; padding: 10px;
+      font-size: 0.85rem; font-weight: 600;
+      text-align: center; cursor: pointer;
+      color: #5050a0; background: none; border: none;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
     }
+    .mode-tab.active { color: #7c6fff; border-bottom-color: #7c6fff; }
 
     /* ── メイン ── */
     .main {
-      flex: 1;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
+      flex: 1; width: 100%;
+      display: flex; flex-direction: column;
       align-items: center;
-      padding: 14px 16px;
-      gap: 12px;
+      padding: 14px 16px; gap: 12px;
     }
 
     /* ── カメラ ── */
     .camera-wrap {
-      position: relative;
-      width: 100%;
-      max-width: 370px;
-      aspect-ratio: 1;
-      border-radius: 16px;
-      overflow: hidden;
-      background: #1a1a24;
-      border: 2px solid #2a2a3a;
+      position: relative; width: 100%; max-width: 370px;
+      aspect-ratio: 1; border-radius: 16px; overflow: hidden;
+      background: #1a1a24; border: 2px solid #2a2a3a;
     }
-
-    #video {
-      width: 100%; height: 100%;
-      object-fit: cover; display: block;
-    }
+    #video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .scan-overlay {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
       pointer-events: none;
     }
-
     .scan-frame { width: 60%; aspect-ratio: 1; position: relative; }
-
     .scan-frame::before, .scan-frame::after,
     .scan-frame > span::before, .scan-frame > span::after {
-      content: ''; position: absolute;
-      width: 24px; height: 24px;
+      content: ''; position: absolute; width: 24px; height: 24px;
       border-color: #7c6fff; border-style: solid;
     }
     .scan-frame::before  { top:0;    left:0;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
     .scan-frame::after   { top:0;    right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
     .scan-frame > span::before { bottom:0; left:0;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
     .scan-frame > span::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-
     .scan-line { display: none; }
 
-    /* ── ステータス ── */
-    .status {
-      font-size: 0.82rem; color: #6060a0;
-      text-align: center; min-height: 1.5em;
+    #btnFlip {
+      position: absolute; top: 10px; right: 10px;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(15,15,19,0.6); border: 1px solid #3a3a5a;
+      color: #a0a0c0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px); z-index: 10;
     }
+    #btnFlip svg { width: 20px; height: 20px; }
+    #btnFlip:active { background: rgba(124,111,255,0.4); }
+
+    /* ── ステータス ── */
+    .status { font-size: 0.82rem; color: #6060a0; text-align: center; min-height: 1.5em; }
     .status.error { color: #d06060; }
+
+    /* ── 手入力パネル ── */
+    #manualPanel {
+      width: 100%; max-width: 370px;
+      display: none; flex-direction: column; gap: 12px;
+    }
+
+    .num-display {
+      background: #1a1a24; border: 2px solid #2a2a3a;
+      border-radius: 12px; padding: 14px 18px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .num-display label { font-size: 0.65rem; color: #5050a0; text-transform: uppercase; letter-spacing: 0.1em; }
+    .num-digits {
+      font-size: 2rem; font-weight: 800; letter-spacing: 0.25em;
+      color: #7c6fff; min-height: 2.5rem; font-variant-numeric: tabular-nums;
+    }
+    .num-digits.complete { color: #60d080; }
+    .num-name  { font-size: 0.9rem; color: #c0c0e0; min-height: 1.4em; }
+    .num-hint  { font-size: 0.7rem; color: #404060; }
+
+    .numpad {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .key {
+      background: #1a1a24; border: 1px solid #2a2a3a;
+      border-radius: 10px; padding: 16px 0;
+      font-size: 1.4rem; font-weight: 600; color: #c0c0e0;
+      cursor: pointer; text-align: center;
+      transition: background 0.1s;
+    }
+    .key:active { background: #2a2a4a; }
+    .key.zero  { grid-column: 1; }
+    .key.del   { font-size: 1.1rem; color: #7060a0; }
+    .key.empty { background: none; border: none; pointer-events: none; }
+
+    .manual-actions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .btn-submit {
+      padding: 14px; border-radius: 12px; border: none;
+      background: #7c6fff; color: #fff;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-submit:disabled { opacity: 0.3; cursor: default; }
+    .btn-submit:not(:disabled):active { opacity: 0.8; }
+    .btn-clear {
+      padding: 14px; border-radius: 12px;
+      border: 1px solid #3a3a5a; background: none;
+      color: #6060a0; font-size: 0.9rem; cursor: pointer;
+    }
+    .btn-clear:active { background: #1a1a24; }
 
     /* ── 最後の会員カード ── */
     .last-card {
@@ -134,40 +161,15 @@
       padding: 12px 16px; border: 1px solid #2a2a3a;
       display: flex; flex-direction: column; gap: 3px;
     }
-    .last-card label {
-      font-size: 0.65rem; color: #5050a0;
-      text-transform: uppercase; letter-spacing: 0.1em;
-    }
+    .last-card label { font-size: 0.65rem; color: #5050a0; text-transform: uppercase; letter-spacing: 0.1em; }
     .last-name   { font-size: 1rem; font-weight: 700; color: #e0e0f0; }
     .last-member { font-size: 0.75rem; color: #6060a0; }
-
     .counter { font-size: 0.72rem; color: #404060; }
 
-    footer {
-      font-size: 0.65rem; color: #252540;
-      padding: 10px; letter-spacing: 0.05em;
-    }
-
-    /* ── カメラ切り替えボタン ── */
-    #btnFlip {
-      position: absolute; top: 10px; right: 10px;
-      width: 40px; height: 40px; border-radius: 50%;
-      background: rgba(15,15,19,0.6);
-      border: 1px solid #3a3a5a;
-      color: #a0a0c0; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(4px);
-      z-index: 10;
-    }
-    #btnFlip svg { width: 20px; height: 20px; }
-    #btnFlip:active { background: rgba(124,111,255,0.4); }
+    footer { font-size: 0.65rem; color: #252540; padding: 10px; letter-spacing: 0.05em; }
 
     /* ── フラッシュ ── */
-    .flash {
-      position: fixed; inset: 0;
-      background: #7c6fff; opacity: 0;
-      pointer-events: none; z-index: 100;
-    }
+    .flash { position: fixed; inset: 0; background: #7c6fff; opacity: 0; pointer-events: none; z-index: 100; }
     .flash.active { animation: flashAnim 0.25s ease-out forwards; }
     @keyframes flashAnim { 0%{ opacity:0.4; } 100%{ opacity:0; } }
 
@@ -177,8 +179,7 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       background: rgba(10,10,18,0.93);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       z-index: 200; padding: 32px;
       opacity: 0; pointer-events: none;
       transition: opacity 0.2s ease;
@@ -189,45 +190,25 @@
       width: 64px; height: 64px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       margin-bottom: 18px;
+      animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
     }
     .ov-icon.ok  { background:#7c6fff; box-shadow:0 0 40px #7c6fff80; }
     .ov-icon.err { background:#6f2020; box-shadow:0 0 40px #6f202080; }
-    .ov-icon svg {
-      width:32px; height:32px; stroke:#fff;
-      stroke-width:3; fill:none;
-      stroke-linecap:round; stroke-linejoin:round;
-    }
-    .ov-icon { animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+    .ov-icon svg { width:32px; height:32px; stroke:#fff; stroke-width:3; fill:none; stroke-linecap:round; stroke-linejoin:round; }
     @keyframes popIn { 0%{transform:scale(0.5);opacity:0;} 100%{transform:scale(1);opacity:1;} }
 
-    .ov-label {
-      font-size: 0.7rem; letter-spacing: 0.12em;
-      text-transform: uppercase; margin-bottom: 10px;
-    }
+    .ov-label { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
     .ov-label.ok  { color: #7c6fff; }
     .ov-label.err { color: #d06060; }
 
     .ov-name {
       font-size: clamp(2rem, 10vw, 3.2rem);
       font-weight: 800; color: #fff;
-      text-align: center; line-height: 1.2;
-      margin-bottom: 10px;
+      text-align: center; line-height: 1.2; margin-bottom: 10px;
     }
-
     .ov-meta { font-size: 1rem; color: #6060a0; text-align: center; }
-
-    .ov-welcome {
-      margin-top: 16px;
-      font-size: clamp(1rem, 4vw, 1.4rem);
-      font-weight: 700; color: #c0f0d0;
-      text-align: center;
-    }
-
-    .ov-sub {
-      margin-top: 8px; font-size: 0.78rem;
-      color: #404060; text-align: center; min-height: 1.2em;
-    }
-
+    .ov-welcome { margin-top: 16px; font-size: clamp(1rem, 4vw, 1.4rem); font-weight: 700; color: #c0f0d0; text-align: center; }
+    .ov-sub { margin-top: 8px; font-size: 0.78rem; color: #404060; text-align: center; min-height: 1.2em; }
     .ov-hint { margin-top: 24px; font-size: 0.7rem; color: #303050; }
 
     .ov-progress {
@@ -235,9 +216,7 @@
       height: 3px; background: #7c6fff;
       width: 100%; transform-origin: left;
     }
-    .ov-progress.run {
-      animation: shrink var(--dur, 3s) linear forwards;
-    }
+    .ov-progress.run { animation: shrink var(--dur, 3s) linear forwards; }
     @keyframes shrink { 0%{transform:scaleX(1);} 100%{transform:scaleX(0);} }
   </style>
 </head>
@@ -257,29 +236,66 @@
   </div>
 </header>
 
+<div class="mode-tabs">
+  <button class="mode-tab active" id="tabQr"     onclick="switchMode('qr')">📷 QRスキャン</button>
+  <button class="mode-tab"        id="tabManual" onclick="switchMode('manual')">🔢 手入力</button>
+</div>
+
 <div class="main">
-  <div class="camera-wrap">
-    <video id="video" autoplay muted playsinline></video>
-    <div class="scan-overlay">
-      <div class="scan-frame"><span></span><div class="scan-line"></div></div>
+
+  <!-- QRモード -->
+  <div id="qrPanel" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;">
+    <div class="camera-wrap">
+      <video id="video" autoplay muted playsinline></video>
+      <div class="scan-overlay">
+        <div class="scan-frame"><span></span><div class="scan-line"></div></div>
+      </div>
+      <button id="btnFlip" onclick="flipCamera()" title="カメラ切り替え">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 7h-3a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </button>
     </div>
-    <button id="btnFlip" onclick="flipCamera()" title="カメラ切り替え">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 7h-3a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
-        <path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
-        <path d="M6.5 6.5L5 5"/>
-      </svg>
-    </button>
+    <p class="status" id="status">カメラを起動中…</p>
   </div>
 
-  <p class="status" id="status">カメラを起動中…</p>
+  <!-- 手入力モード -->
+  <div id="manualPanel">
+    <div class="num-display">
+      <label>会員番号（6桁）</label>
+      <div class="num-digits" id="numDigits">_ _ _ _ _ _</div>
+      <div class="num-name"   id="numName"></div>
+      <div class="num-hint"   id="numHint">テンキーで入力してください</div>
+    </div>
 
+    <div class="numpad">
+      <button class="key" ontouchstart="kInput('7')" onclick="kInput('7')">7</button>
+      <button class="key" ontouchstart="kInput('8')" onclick="kInput('8')">8</button>
+      <button class="key" ontouchstart="kInput('9')" onclick="kInput('9')">9</button>
+      <button class="key" ontouchstart="kInput('4')" onclick="kInput('4')">4</button>
+      <button class="key" ontouchstart="kInput('5')" onclick="kInput('5')">5</button>
+      <button class="key" ontouchstart="kInput('6')" onclick="kInput('6')">6</button>
+      <button class="key" ontouchstart="kInput('1')" onclick="kInput('1')">1</button>
+      <button class="key" ontouchstart="kInput('2')" onclick="kInput('2')">2</button>
+      <button class="key" ontouchstart="kInput('3')" onclick="kInput('3')">3</button>
+      <button class="key zero" ontouchstart="kInput('0')" onclick="kInput('0')">0</button>
+      <button class="key empty"></button>
+      <button class="key del"  ontouchstart="kDel()" onclick="kDel()">⌫</button>
+    </div>
+
+    <div class="manual-actions">
+      <button class="btn-submit" id="btnSubmit" onclick="handleManualSubmit()" disabled>出席を記録 ✓</button>
+      <button class="btn-clear"  onclick="kClear()">クリア</button>
+    </div>
+  </div>
+
+  <!-- 共通 -->
   <div class="last-card">
     <label>最後に受付した会員</label>
     <p class="last-name"   id="lastName">—</p>
     <p class="last-member" id="lastMemberId"></p>
   </div>
-
   <p class="counter" id="counter">本日の受付: 0 件</p>
 </div>
 
@@ -290,10 +306,10 @@
     <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
   </div>
   <p class="ov-label ok" id="ovLabel">受付完了</p>
-  <p class="ov-name"    id="ovName"></p>
-  <p class="ov-meta"    id="ovMeta"></p>
-  <p class="ov-welcome" id="ovWelcome">ご来校ありがとうございます！</p>
-  <p class="ov-sub"     id="ovSub">記録中…</p>
+  <p class="ov-name"     id="ovName"></p>
+  <p class="ov-meta"     id="ovMeta"></p>
+  <p class="ov-welcome"  id="ovWelcome">ご来校ありがとうございます！</p>
+  <p class="ov-sub"      id="ovSub">記録中…</p>
   <p class="ov-hint">タップで閉じる</p>
   <div class="ov-progress" id="ovProgress"></div>
 </div>
@@ -302,8 +318,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION = '2026.05.18-r19';
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
+  const VERSION     = '2026.05.18-r21';
+  const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
   document.getElementById('versionFooter').textContent = 'v' + VERSION;
@@ -315,26 +331,42 @@
   let scanCount     = 0;
   let dismissTimer  = null;
   let audioCtx      = null;
+  let currentMode   = 'qr';
+  let manualVal     = '';
 
   // ── 時計 ────────────────────────────────────────────
   const WD = ['日','月','火','水','木','金','土'];
   function updateClock() {
     const n = new Date();
     document.getElementById('hdDate').textContent =
-      n.getFullYear() + '年' +
-      String(n.getMonth()+1).padStart(2,'0') + '月' +
+      n.getFullYear() + '年' + String(n.getMonth()+1).padStart(2,'0') + '月' +
       String(n.getDate()).padStart(2,'0') + '日（' + WD[n.getDay()] + '）';
     document.getElementById('hdClock').textContent =
-      String(n.getHours()).padStart(2,'0') + ':' +
-      String(n.getMinutes()).padStart(2,'0');
+      String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
   }
   updateClock();
   setInterval(updateClock, 1000);
 
+  // ── モード切り替え ──────────────────────────────────
+  function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('tabQr').classList.toggle('active', mode === 'qr');
+    document.getElementById('tabManual').classList.toggle('active', mode === 'manual');
+    document.getElementById('qrPanel').style.display    = mode === 'qr'     ? 'flex' : 'none';
+    document.getElementById('manualPanel').style.display = mode === 'manual' ? 'flex' : 'none';
+
+    if (mode === 'qr') {
+      startCamera();
+    } else {
+      stopCamera();
+      kClear();
+    }
+  }
+
   // ── 会員キャッシュ ──────────────────────────────────
   async function warmupMembers() {
     try {
-      const res    = await fetch(GAS_URL + '?action=getAllMembers');
+      const res = await fetch(GAS_URL + '?action=getAllMembers');
       const result = await res.json();
       if (result.success) {
         memberCache = result.members;
@@ -366,7 +398,6 @@
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtx;
   }
-
   function playBeep() {
     const ctx = getCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.type = 'sine';
@@ -376,7 +407,6 @@
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
   }
-
   function playBass() {
     const ctx = getCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.frequency.value = 60;
@@ -385,7 +415,6 @@
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(); osc.stop(ctx.currentTime + 0.3);
   }
-
   function playError() {
     const ctx = getCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.type = 'square';
@@ -406,7 +435,7 @@
   // ── オーバーレイ ─────────────────────────────────────
   const overlay = document.getElementById('result-overlay');
 
-  function showOverlay({ name, meta, sub, type = 'ok', sec = OVERLAY_SEC }) {
+  function showOverlay({ name, meta, type = 'ok', sec = OVERLAY_SEC }) {
     const icon = document.getElementById('ovIcon');
     icon.className = 'ov-icon ' + type;
     icon.innerHTML = type === 'ok'
@@ -417,12 +446,11 @@
     label.textContent = type === 'ok' ? '受付完了' : 'エラー';
     label.className   = 'ov-label ' + type;
 
-    document.getElementById('ovName').textContent    = name || '';
-    document.getElementById('ovMeta').textContent    = meta || '';
-    document.getElementById('ovWelcome').style.display = type === 'ok' ? '' : 'none';
-    document.getElementById('ovSub').textContent     = '記録中…';
+    document.getElementById('ovName').textContent           = name || '';
+    document.getElementById('ovMeta').textContent           = meta || '';
+    document.getElementById('ovWelcome').style.display      = type === 'ok' ? '' : 'none';
+    document.getElementById('ovSub').textContent            = '記録中…';
 
-    // アニメーションリセット
     icon.style.animation = 'none'; void icon.offsetWidth; icon.style.animation = '';
 
     const prog = document.getElementById('ovProgress');
@@ -442,77 +470,118 @@
   overlay.addEventListener('click', hideOverlay);
 
   // ── GAS送信 ──────────────────────────────────────────
-  async function submitAttendance(memberId, fullName) {
+  async function submitAttendance(memberId, fullName, note = '会員証QR') {
     const params = new URLSearchParams({
       action: 'submitAttendance',
       name: (fullName || '（名前なし）') + '　' + memberId,
-      note: '会員証QR'
+      note
     });
     const res    = await fetch(GAS_URL + '?' + params);
     const result = await res.json();
     if (!result.success) throw new Error(result.message || '送信失敗');
   }
 
-  // ── スキャン処理 ─────────────────────────────────────
-  async function handleScan(rawText) {
-    const memberId = extractMemberId(rawText);
-
-    // 会員証以外のQR
-    if (!memberId) {
-      getCtx().resume().then(playError);
-      showOverlay({
-        name: '読み取りエラー',
-        meta: '会員証QRではありません',
-        sub: rawText.slice(0, 50),
-        type: 'err',
-        sec: 2
-      });
-      return;
-    }
-
-    // 音・フラッシュ・振動
-    flashScreen();
-    if (navigator.vibrate) navigator.vibrate(200);
-    getCtx().resume().then(() => { playBass(); playBeep(); });
-
+  // ── 受付共通処理 ─────────────────────────────────────
+  async function processCheckin(memberId, note = '会員証QR') {
     const fullName = findMember(memberId) || '（名前なし）';
 
-    // カード更新
-    document.getElementById('lastName').textContent    = fullName;
+    document.getElementById('lastName').textContent     = fullName;
     document.getElementById('lastMemberId').textContent = '会員番号：' + memberId;
     scanCount++;
     document.getElementById('counter').textContent = '本日の受付: ' + scanCount + ' 件';
 
-    // オーバーレイ表示（まず「記録中…」）
-    showOverlay({
-      name: fullName,
-      meta: '会員番号：' + memberId,
-      sub: '記録中…',
-      type: 'ok',
-      sec: OVERLAY_SEC
-    });
+    flashScreen();
+    if (navigator.vibrate) navigator.vibrate(200);
+    getCtx().resume().then(() => { playBass(); playBeep(); });
 
-    // GAS送信してサブテキスト更新
+    showOverlay({ name: fullName, meta: '会員番号：' + memberId, type: 'ok' });
+
     try {
-      await submitAttendance(memberId, fullName);
+      await submitAttendance(memberId, fullName, note);
       document.getElementById('ovSub').textContent = '✓ 記録完了';
     } catch (err) {
       document.getElementById('ovSub').textContent = '⚠ 記録に失敗しました';
     }
   }
 
+  // ── QRスキャン処理 ───────────────────────────────────
+  async function handleScan(rawText) {
+    const memberId = extractMemberId(rawText);
+    if (!memberId) {
+      getCtx().resume().then(playError);
+      showOverlay({ name: '読み取りエラー', meta: '会員証QRではありません', type: 'err', sec: 2 });
+      return;
+    }
+    await processCheckin(memberId, '会員証QR');
+  }
+
+  // ── 手入力テンキー ───────────────────────────────────
+  function kInput(d) {
+    if (manualVal.length >= 6) return;
+    manualVal += d;
+    updateNumDisplay();
+  }
+  function kDel() {
+    manualVal = manualVal.slice(0, -1);
+    updateNumDisplay();
+  }
+  function kClear() {
+    manualVal = '';
+    updateNumDisplay();
+  }
+
+  function updateNumDisplay() {
+    const el     = document.getElementById('numDigits');
+    const nameEl = document.getElementById('numName');
+    const hintEl = document.getElementById('numHint');
+    const btn    = document.getElementById('btnSubmit');
+    const len    = manualVal.length;
+
+    // 桁表示
+    const filled = manualVal.split('');
+    const blanks = Array(6 - len).fill('_');
+    el.textContent = [...filled, ...blanks].join(' ');
+    el.classList.toggle('complete', len === 6);
+
+    btn.disabled = len !== 6;
+
+    if (len === 6) {
+      const name = findMember(manualVal);
+      if (name) {
+        nameEl.textContent = name;
+        nameEl.style.color = '#c0f0d0';
+        hintEl.textContent = '「出席を記録」を押してください';
+      } else {
+        nameEl.textContent = '会員番号が見つかりません';
+        nameEl.style.color = '#d06060';
+        hintEl.textContent = memberCache ? '登録されていない番号です' : '会員データ読込中…';
+      }
+    } else {
+      nameEl.textContent = '';
+      hintEl.textContent = 'テンキーで入力してください';
+    }
+  }
+
+  async function handleManualSubmit() {
+    if (manualVal.length !== 6) return;
+    const memberId = manualVal;
+    kClear();
+    await processCheckin(memberId, '手入力');
+  }
+
   // ── カメラ ───────────────────────────────────────────
   const video  = document.getElementById('video');
   const canvas = document.createElement('canvas');
   const ctx2d  = canvas.getContext('2d');
-
-  let facingMode = 'environment';
+  let facingMode    = 'environment';
   let currentStream = null;
 
+  function stopCamera() {
+    if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+  }
+
   async function startCamera() {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-    }
+    stopCamera();
     try {
       currentStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode, width: { ideal: 640 }, height: { ideal: 640 } }
@@ -534,16 +603,13 @@
   }
 
   function tick() {
+    if (currentMode !== 'qr') return;
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
       canvas.width  = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx2d.drawImage(video, 0, 0);
-
       const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert'
-      });
-
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
       const now = Date.now();
       if (code && (code.data !== lastScanned || now > cooldownUntil)) {
         lastScanned   = code.data;
