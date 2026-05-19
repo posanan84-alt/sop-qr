@@ -451,7 +451,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.19-r25';
+  const VERSION     = '2026.05.19-r26';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -782,11 +782,8 @@
   // ── QRスキャン処理 ───────────────────────────────────
   async function handleScan(rawText) {
     const memberId = extractMemberId(rawText);
-    if (!memberId) {
-      getCtx().resume().then(playError);
-      showOverlay({ name: '読み取りエラー', meta: '会員証QRではありません', type: 'err', sec: 2 });
-      return;
-    }
+    // 会員証QR以外は完全に無視
+    if (!memberId) return;
     await processCheckin(memberId, '会員証QR');
   }
 
