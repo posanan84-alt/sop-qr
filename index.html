@@ -315,6 +315,117 @@
     }
     .ov-progress.run { animation: shrink var(--dur, 3s) linear forwards; }
     @keyframes shrink { 0%{transform:scaleX(1);} 100%{transform:scaleX(0);} }
+
+    /* ═══════════════════════════════════════════════════════
+       iPad レイアウト（768px 以上）
+       ─ スマホ CSS は上書きせず、必要な箇所のみ追加・拡張
+    ═══════════════════════════════════════════════════════ */
+    @media (min-width: 768px) {
+
+      /* ── ヘッダー ── */
+      header       { padding: 18px 40px; }
+      .hd-school   { font-size: 0.8rem; }
+      .hd-title    { font-size: 1.35rem; gap: 8px; }
+      .hd-date     { font-size: 0.8rem; }
+      .hd-clock    { font-size: 2rem; }
+      .cache-dot   { width: 10px; height: 10px; }
+
+      /* ── モードタブ ── */
+      .mode-tab { padding: 16px 24px; font-size: 1rem; letter-spacing: 0.04em; }
+
+      /* ── メイン：2カラムグリッド ──
+         左列（1fr）：QRパネル or 手入力パネル
+         右列（360px）：最後の受付カード + カウンター
+      ── */
+      .main {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        align-items: start;
+        gap: 24px 32px;
+        padding: 28px 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      #qrPanel     { grid-column: 1; grid-row: 1 / span 2; max-width: none; align-items: flex-start; }
+      #manualPanel { grid-column: 1; grid-row: 1 / span 2; max-width: none; }
+      .last-card   { grid-column: 2; grid-row: 1; max-width: none; padding: 20px 24px; gap: 6px; }
+      .counter     { grid-column: 2; grid-row: 2; font-size: 0.88rem; }
+
+      /* ── カメラ ── */
+      .camera-wrap { max-width: 100%; border-radius: 20px; border-width: 3px; }
+      #btnFlip     { width: 54px; height: 54px; top: 16px; right: 16px; }
+      #btnFlip svg { width: 28px; height: 28px; }
+      .status      { font-size: 1rem; margin-top: 6px; }
+
+      /* スキャン枠の角を少し大きく */
+      .scan-frame::before, .scan-frame::after,
+      .scan-frame > span::before, .scan-frame > span::after {
+        width: 32px; height: 32px; border-width: 4px !important;
+      }
+
+      /* ── 最後の会員カード ── */
+      .last-card label { font-size: 0.75rem; }
+      .last-name       { font-size: 1.4rem; }
+      .last-member     { font-size: 0.9rem; }
+
+      /* ── サブタブ ── */
+      .sub-tab { padding: 14px 10px; font-size: 0.95rem; }
+
+      /* ── 番号入力 ── */
+      .num-display    { padding: 18px 24px; border-radius: 14px; }
+      .num-digits     { font-size: 3rem; letter-spacing: 0.3em; }
+      .num-name       { font-size: 1.1rem; min-height: 1.6em; }
+      .num-hint       { font-size: 0.82rem; }
+
+      /* ── テンキー：立ったまま操作しやすいサイズ ── */
+      .numpad { gap: 12px; }
+      .key {
+        padding: 24px 0;
+        font-size: 1.8rem;
+        border-radius: 14px;
+        border-width: 2px;
+      }
+      .key.del   { font-size: 1.4rem; }
+
+      /* ── 送信・クリアボタン ── */
+      .manual-actions { gap: 12px; margin-top: 4px; }
+      .btn-submit     { padding: 20px; font-size: 1.15rem; border-radius: 14px; }
+      .btn-clear      { padding: 20px; font-size: 1rem;    border-radius: 14px; }
+
+      /* ── 名前検索 ── */
+      #namePane        { gap: 14px; }
+      .name-search-box { padding: 16px 22px; border-radius: 16px; border-width: 2px; }
+      #nameInput       { font-size: 1.3rem; }
+      .name-search-box span { font-size: 1.3rem; }
+      #nameClear       { font-size: 1.4rem; }
+
+      .name-results  { max-height: 52dvh; gap: 10px; }
+      .name-result   { padding: 18px 22px; border-radius: 14px; gap: 5px; }
+      .name-result:active { border-width: 2px; }
+      .nr-name { font-size: 1.25rem; }
+      .nr-kana { font-size: 0.92rem; }
+      .nr-id   { font-size: 0.84rem; margin-top: 2px; }
+      .name-msg { font-size: 0.95rem; padding: 32px 0; }
+
+      /* ── 確認モーダル ── */
+      .cf-box    { max-width: 520px; padding: 44px 40px; gap: 14px; border-radius: 24px; }
+      .cf-label  { font-size: 0.8rem; }
+      .cf-name   { font-size: 2.6rem; }
+      .cf-id     { font-size: 0.95rem; }
+      .cf-btns   { gap: 14px; margin-top: 18px; }
+      .cf-ok     { padding: 22px; font-size: 1.15rem; border-radius: 14px; }
+      .cf-cancel { padding: 22px; font-size: 1.05rem; border-radius: 14px; }
+
+      /* ── 結果オーバーレイ ── */
+      .ov-icon    { width: 88px; height: 88px; margin-bottom: 24px; }
+      .ov-icon svg { width: 44px; height: 44px; }
+      .ov-name    { font-size: clamp(2.8rem, 6vw, 4.5rem); margin-bottom: 14px; }
+      .ov-meta    { font-size: 1.2rem; }
+      .ov-welcome { font-size: clamp(1.2rem, 3vw, 1.8rem); margin-top: 22px; }
+      .ov-sub     { font-size: 0.9rem; margin-top: 10px; }
+      .ov-hint    { margin-top: 32px; font-size: 0.8rem; }
+    }
   </style>
 </head>
 <body>
@@ -451,7 +562,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.19-r26';
+  const VERSION     = '2026.05.20-r27';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
