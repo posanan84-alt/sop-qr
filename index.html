@@ -229,6 +229,39 @@
 
     footer { font-size: 0.65rem; color: #252540; padding: 10px; letter-spacing: 0.05em; }
 
+    /* ── 50音キーボード（デフォルト非表示・iPad専用） ── */
+    #kana-keyboard {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 322px;
+      background: #0a0a12;
+      border-top: 2px solid #252538;
+      padding: 10px 14px 14px;
+      z-index: 150;
+    }
+    #kana-keyboard.visible { display: block; }
+
+    .kana-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 6px;
+      height: 100%;
+    }
+    .kana-key {
+      background: #1e1e2e; border: 1px solid #2a2a3a; border-radius: 8px;
+      color: #d0d0f0; font-size: clamp(1.05rem, 2.4vw, 1.5rem); font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: inherit; padding: 0; user-select: none; -webkit-user-select: none;
+      transition: background 0.08s;
+    }
+    .kana-key:active   { background: #3a3a5a; }
+    .kana-key.empty    { background: transparent; border: none; pointer-events: none; }
+    .kana-key.special  { background: #20202e; color: #9080c0; font-size: clamp(1rem, 2vw, 1.3rem); }
+    .kana-key.kana-del { background: #20202e; color: #c08080; font-size: clamp(1rem, 2vw, 1.3rem); }
+    .kana-key.kana-clr { background: #20202e; color: #707088; font-size: clamp(0.7rem, 1.4vw, 0.95rem); font-weight: 700; }
+    .kana-key.kana-del:active, .kana-key.kana-clr:active { background: #2e2e3e; }
+
     /* ── 確認モーダル ── */
     #confirm-overlay {
       position: fixed; inset: 0;
@@ -427,6 +460,9 @@
       .ov-welcome { font-size: clamp(1.2rem, 3vw, 1.8rem); margin-top: 22px; }
       .ov-sub     { font-size: 0.9rem; margin-top: 10px; }
       .ov-hint    { margin-top: 32px; font-size: 0.8rem; }
+
+      /* キーボード表示時：コンテンツが隠れないよう下余白 */
+      body.kb-open { padding-bottom: 322px; }
     }
   </style>
 </head>
@@ -563,9 +599,12 @@
 
 <div class="flash" id="flash"></div>
 
+<!-- 50音キーボード（iPad専用・JS で生成） -->
+<div id="kana-keyboard"><div class="kana-grid" id="kanaGrid"></div></div>
+
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.20-r28';
+  const VERSION     = '2026.05.20-r29';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -595,6 +634,87 @@
   updateClock();
   setInterval(updateClock, 1000);
 
+  const IS_IPAD = window.innerWidth >= 768;
+
+  // ── 50音キーボード ──────────────────────────────────
+  const KANA_ROWS = [
+    // 行    あ      か      さ      た      な      は      ま      や      ら      わ
+    /*a*/ ['あ',  'か',  'さ',  'た',  'な',  'は',  'ま',  'や',  'ら',  'わ' ],
+    /*i*/ ['い',  'き',  'し',  'ち',  'に',  'ひ',  'み',  null,  'り',  null ],
+    /*u*/ ['う',  'く',  'す',  'つ',  'ぬ',  'ふ',  'む',  'ゆ',  'る',  null ],
+    /*e*/ ['え',  'け',  'せ',  'て',  'ね',  'へ',  'め',  null,  'れ',  'を' ],
+    /*o*/ ['お',  'こ',  'そ',  'と',  'の',  'ほ',  'も',  'よ',  'ろ',  'ん' ],
+    /*sp*/['゛',  '゜',  'っ',  'ゃ',  'ゅ',  'ょ',  null,  null,  '⌫',  'クリア'],
+  ];
+  const DAKUTEN = {
+    'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご',
+    'さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ',
+    'た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど',
+    'は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ',
+    'が':'か','ぎ':'き','ぐ':'く','げ':'け','ご':'こ',
+    'ざ':'さ','じ':'し','ず':'す','ぜ':'せ','ぞ':'そ',
+    'だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と',
+    'ば':'は','び':'ひ','ぶ':'ふ','べ':'へ','ぼ':'ほ',
+  };
+  const HANDAKUTEN = {
+    'は':'ぱ','ひ':'ぴ','ふ':'ぷ','へ':'ぺ','ほ':'ぽ',
+    'ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ',
+  };
+
+  function buildKanaKeyboard() {
+    const grid = document.getElementById('kanaGrid');
+    KANA_ROWS.forEach(row => {
+      row.forEach(ch => {
+        const btn = document.createElement('button');
+        if (ch === null) {
+          btn.className = 'kana-key empty';
+        } else if (ch === '⌫') {
+          btn.className = 'kana-key kana-del';
+          btn.textContent = ch;
+          btn.onclick = () => {
+            const el = document.getElementById('nameInput');
+            el.value = el.value.slice(0, -1);
+            onNameInput();
+          };
+        } else if (ch === 'クリア') {
+          btn.className = 'kana-key kana-clr';
+          btn.textContent = ch;
+          btn.onclick = clearNameSearch;
+        } else if (ch === '゛') {
+          btn.className = 'kana-key special';
+          btn.textContent = ch;
+          btn.onclick = () => {
+            const el = document.getElementById('nameInput');
+            const last = el.value.slice(-1);
+            if (DAKUTEN[last]) { el.value = el.value.slice(0,-1) + DAKUTEN[last]; onNameInput(); }
+          };
+        } else if (ch === '゜') {
+          btn.className = 'kana-key special';
+          btn.textContent = ch;
+          btn.onclick = () => {
+            const el = document.getElementById('nameInput');
+            const last = el.value.slice(-1);
+            if (HANDAKUTEN[last]) { el.value = el.value.slice(0,-1) + HANDAKUTEN[last]; onNameInput(); }
+          };
+        } else {
+          btn.className = 'kana-key';
+          btn.textContent = ch;
+          btn.onclick = () => {
+            document.getElementById('nameInput').value += ch;
+            onNameInput();
+          };
+        }
+        grid.appendChild(btn);
+      });
+    });
+  }
+
+  function setKanaKeyboard(visible) {
+    if (!IS_IPAD) return;
+    document.getElementById('kana-keyboard').classList.toggle('visible', visible);
+    document.body.classList.toggle('kb-open', visible);
+  }
+
   // ── モード切り替え ──────────────────────────────────
   function switchMode(mode) {
     currentMode = mode;
@@ -604,10 +724,14 @@
     document.getElementById('manualPanel').style.display = mode === 'manual' ? 'flex' : 'none';
 
     if (mode === 'qr') {
+      setKanaKeyboard(false);
       startCamera();
     } else {
       stopCamera();
       kClear();
+      // 手入力モードでは名前検索を優先表示
+      if (subMode !== 'name') switchSubMode('name');
+      else setKanaKeyboard(true);
     }
   }
 
@@ -621,9 +745,11 @@
     if (mode === 'num') {
       document.getElementById('numPane').style.flexDirection = 'column';
       document.getElementById('numPane').style.gap = '12px';
+      setKanaKeyboard(false);
     }
     if (mode === 'name') {
-      document.getElementById('nameInput').focus();
+      setKanaKeyboard(true);
+      if (!IS_IPAD) document.getElementById('nameInput').focus();
     }
   }
 
@@ -1007,14 +1133,14 @@
 
   // ── 起動 ─────────────────────────────────────────────
   warmupMembers();
-  if (window.innerWidth >= 768) {
-    // iPad：名前検索（ふりがな）を最初に表示
-    switchMode('manual');
-    switchSubMode('name');
-  } else {
-    // スマホ：QRスキャンモード
-    startCamera();
+  if (IS_IPAD) {
+    // iPad：インカメラ初期設定・50音キーボード生成
+    facingMode = 'user';
+    document.getElementById('nameInput').setAttribute('inputmode', 'none'); // ネイティブキーボード抑制
+    buildKanaKeyboard();
   }
+  // 全デバイス共通：QRスキャンモードで起動
+  startCamera();
 </script>
 </body>
 </html>
