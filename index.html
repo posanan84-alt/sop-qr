@@ -213,6 +213,7 @@
     .nr-kana { font-size: 0.78rem; color: #7060a0; }
     .nr-id   { font-size: 0.72rem; color: #404060; }
     .name-msg { font-size: 0.82rem; color: #404060; text-align: center; padding: 20px 0; }
+    .name-subhint { display: none; font-size: 0.78rem; color: #404060; padding: 0 4px; }
 
     /* ── 最後の会員カード ── */
     .last-card {
@@ -395,6 +396,7 @@
 
       /* ── 名前検索 ── */
       #namePane        { gap: 14px; }
+      .name-subhint    { display: block; }
       .name-search-box { padding: 16px 22px; border-radius: 16px; border-width: 2px; }
       #nameInput       { font-size: 1.3rem; }
       .name-search-box span { font-size: 1.3rem; }
@@ -512,11 +514,12 @@
       <div class="name-search-box">
         <span>🔍</span>
         <input id="nameInput" type="search" inputmode="search" autocomplete="off" autocorrect="off"
-               spellcheck="false" placeholder="ふりがなまたは漢字で検索" oninput="onNameInput()">
+               spellcheck="false" placeholder="ふりがなで検索（例：こやま）" oninput="onNameInput()">
         <button id="nameClear" onclick="clearNameSearch()">✕</button>
       </div>
+      <p class="name-subhint" id="nameSubhint">姓のふりがなで検索します</p>
       <div class="name-results" id="nameResults">
-        <p class="name-msg">名前を入力すると候補が表示されます</p>
+        <p class="name-msg">ふりがなを入力すると候補が表示されます</p>
       </div>
     </div>
 
@@ -562,7 +565,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.20-r27';
+  const VERSION     = '2026.05.20-r28';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -727,7 +730,7 @@
     document.getElementById('nameClear').classList.toggle('show', q.length > 0);
     if (!q.trim()) {
       document.getElementById('nameResults').innerHTML =
-        '<p class="name-msg">名前を入力すると候補が表示されます</p>';
+        '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
       return;
     }
     if (!memberCache) {
@@ -742,7 +745,7 @@
     document.getElementById('nameInput').value = '';
     document.getElementById('nameClear').classList.remove('show');
     document.getElementById('nameResults').innerHTML =
-      '<p class="name-msg">名前を入力すると候補が表示されます</p>';
+      '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
     document.getElementById('nameInput').focus();
   }
 
@@ -1004,7 +1007,14 @@
 
   // ── 起動 ─────────────────────────────────────────────
   warmupMembers();
-  startCamera();
+  if (window.innerWidth >= 768) {
+    // iPad：名前検索（ふりがな）を最初に表示
+    switchMode('manual');
+    switchSubMode('name');
+  } else {
+    // スマホ：QRスキャンモード
+    startCamera();
+  }
 </script>
 </body>
 </html>
