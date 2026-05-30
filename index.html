@@ -506,47 +506,11 @@
     <p class="status" id="status">カメラを起動中…</p>
   </div>
 
-  <!-- 手入力モード -->
+  <!-- 手入力モード（名前検索のみ） -->
   <div id="manualPanel">
 
-    <!-- サブタブ -->
-    <div class="sub-tabs">
-      <button class="sub-tab active" id="subTabNum"  onclick="switchSubMode('num')">🔢 番号入力</button>
-      <button class="sub-tab"        id="subTabName" onclick="switchSubMode('name')">🔤 名前検索</button>
-    </div>
-
-    <!-- 番号入力ペイン -->
-    <div id="numPane">
-      <div class="num-display">
-        <label>会員番号（6桁）</label>
-        <div class="num-digits" id="numDigits">_ _ _ _ _ _</div>
-        <div class="num-name"   id="numName"></div>
-        <div class="num-hint"   id="numHint">テンキーで入力してください</div>
-      </div>
-
-      <div class="numpad">
-        <button class="key" onclick="kInput('7')">7</button>
-        <button class="key" onclick="kInput('8')">8</button>
-        <button class="key" onclick="kInput('9')">9</button>
-        <button class="key" onclick="kInput('4')">4</button>
-        <button class="key" onclick="kInput('5')">5</button>
-        <button class="key" onclick="kInput('6')">6</button>
-        <button class="key" onclick="kInput('1')">1</button>
-        <button class="key" onclick="kInput('2')">2</button>
-        <button class="key" onclick="kInput('3')">3</button>
-        <button class="key zero" onclick="kInput('0')">0</button>
-        <button class="key empty"></button>
-        <button class="key del"  onclick="kDel()">⌫</button>
-      </div>
-
-      <div class="manual-actions">
-        <button class="btn-submit" id="btnSubmit" onclick="handleManualSubmit()" disabled>出席を記録 ✓</button>
-        <button class="btn-clear"  onclick="kClear()">クリア</button>
-      </div>
-    </div>
-
     <!-- 名前検索ペイン -->
-    <div id="namePane" style="display:none;">
+    <div id="namePane">
       <div class="name-search-box">
         <span>🔍</span>
         <input id="nameInput" type="search" inputmode="search" autocomplete="off" autocorrect="off"
@@ -604,7 +568,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.20-r29';
+  const VERSION     = '2026.05.21-r30';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -618,8 +582,6 @@
   let dismissTimer  = null;
   let audioCtx      = null;
   let currentMode   = 'qr';
-  let subMode       = 'num';
-  let manualVal     = '';
 
   // ── 時計 ────────────────────────────────────────────
   const WD = ['日','月','火','水','木','金','土'];
@@ -728,26 +690,6 @@
       startCamera();
     } else {
       stopCamera();
-      kClear();
-      // 手入力モードでは名前検索を優先表示
-      if (subMode !== 'name') switchSubMode('name');
-      else setKanaKeyboard(true);
-    }
-  }
-
-  // ── サブモード切り替え（番号 / 名前） ──────────────
-  function switchSubMode(mode) {
-    subMode = mode;
-    document.getElementById('subTabNum').classList.toggle('active',  mode === 'num');
-    document.getElementById('subTabName').classList.toggle('active', mode === 'name');
-    document.getElementById('numPane').style.display  = mode === 'num'  ? 'flex' : 'none';
-    document.getElementById('namePane').style.display = mode === 'name' ? 'flex' : 'none';
-    if (mode === 'num') {
-      document.getElementById('numPane').style.flexDirection = 'column';
-      document.getElementById('numPane').style.gap = '12px';
-      setKanaKeyboard(false);
-    }
-    if (mode === 'name') {
       setKanaKeyboard(true);
       if (!IS_IPAD) document.getElementById('nameInput').focus();
     }
@@ -1027,59 +969,6 @@
     await processCheckin(memberId, '会員証QR');
   }
 
-  // ── 手入力テンキー ───────────────────────────────────
-  function kInput(d) {
-    if (manualVal.length >= 6) return;
-    manualVal += d;
-    updateNumDisplay();
-  }
-  function kDel() {
-    manualVal = manualVal.slice(0, -1);
-    updateNumDisplay();
-  }
-  function kClear() {
-    manualVal = '';
-    updateNumDisplay();
-  }
-
-  function updateNumDisplay() {
-    const el     = document.getElementById('numDigits');
-    const nameEl = document.getElementById('numName');
-    const hintEl = document.getElementById('numHint');
-    const btn    = document.getElementById('btnSubmit');
-    const len    = manualVal.length;
-
-    const filled = manualVal.split('');
-    const blanks = Array(6 - len).fill('_');
-    el.textContent = [...filled, ...blanks].join(' ');
-    el.classList.toggle('complete', len === 6);
-
-    btn.disabled = len !== 6;
-
-    if (len === 6) {
-      const name = findMember(manualVal);
-      if (name) {
-        nameEl.textContent = name;
-        nameEl.style.color = '#c0f0d0';
-        hintEl.textContent = '「出席を記録」を押してください';
-      } else {
-        nameEl.textContent = '会員番号が見つかりません';
-        nameEl.style.color = '#d06060';
-        hintEl.textContent = memberCache ? '登録されていない番号です' : '会員データ読込中…';
-      }
-    } else {
-      nameEl.textContent = '';
-      hintEl.textContent = 'テンキーで入力してください';
-    }
-  }
-
-  async function handleManualSubmit() {
-    if (manualVal.length !== 6) return;
-    const memberId = manualVal;
-    kClear();
-    await processCheckin(memberId, '手入力');
-  }
-
   // ── カメラ ───────────────────────────────────────────
   const video  = document.getElementById('video');
   const canvas = document.createElement('canvas');
@@ -1134,12 +1023,11 @@
   // ── 起動 ─────────────────────────────────────────────
   warmupMembers();
   if (IS_IPAD) {
-    // iPad：インカメラ初期設定・50音キーボード生成
+    // iPad：インカメラ初期設定・50音キーボード生成・ネイティブキーボード抑制
     facingMode = 'user';
-    document.getElementById('nameInput').setAttribute('inputmode', 'none'); // ネイティブキーボード抑制
+    document.getElementById('nameInput').setAttribute('inputmode', 'none');
     buildKanaKeyboard();
   }
-  // 全デバイス共通：QRスキャンモードで起動
   startCamera();
 </script>
 </body>
