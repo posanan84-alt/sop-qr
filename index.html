@@ -215,16 +215,25 @@
     .name-msg { font-size: 0.82rem; color: #404060; text-align: center; padding: 20px 0; }
     .name-subhint { display: none; font-size: 0.78rem; color: #404060; padding: 0 4px; }
 
-    /* ── 最後の会員カード ── */
-    .last-card {
+    /* ── 受付履歴パネル ── */
+    .history-panel {
       width: 100%; max-width: 370px;
       background: #1a1a24; border-radius: 12px;
       padding: 12px 16px; border: 1px solid #2a2a3a;
-      display: flex; flex-direction: column; gap: 3px;
+      display: flex; flex-direction: column; gap: 8px;
     }
-    .last-card label { font-size: 0.65rem; color: #5050a0; text-transform: uppercase; letter-spacing: 0.1em; }
-    .last-name   { font-size: 1rem; font-weight: 700; color: #e0e0f0; }
-    .last-member { font-size: 0.75rem; color: #6060a0; }
+    .history-panel > label { font-size: 0.65rem; color: #5050a0; text-transform: uppercase; letter-spacing: 0.1em; }
+    #historyList { display: flex; flex-direction: column; }
+    .hist-empty { font-size: 0.9rem; color: #2e2e4e; padding: 4px 0; }
+    .hist-item {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 8px 0; border-bottom: 1px solid #1e1e28;
+    }
+    .hist-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .hist-name { font-size: 0.95rem; font-weight: 700; color: #c0c0e0; }
+    .hist-meta { font-size: 0.7rem; color: #484868; }
+    .hist-item.latest .hist-name { font-size: 1.05rem; color: #e8e8ff; }
+    .hist-item.latest .hist-meta { color: #6060a0; }
     .counter { font-size: 0.72rem; color: #404060; }
 
     footer { font-size: 0.65rem; color: #252540; padding: 10px; letter-spacing: 0.05em; }
@@ -381,10 +390,10 @@
         margin: 0 auto;
       }
 
-      #qrPanel     { grid-column: 1; grid-row: 1 / span 2; max-width: none; align-items: flex-start; }
-      #manualPanel { grid-column: 1; grid-row: 1 / span 2; max-width: none; }
-      .last-card   { grid-column: 2; grid-row: 1; max-width: none; padding: 20px 24px; gap: 6px; }
-      .counter     { grid-column: 2; grid-row: 2; font-size: 0.88rem; }
+      #qrPanel       { grid-column: 1; grid-row: 1 / span 2; max-width: none; align-items: flex-start; }
+      #manualPanel   { grid-column: 1; grid-row: 1 / span 2; max-width: none; }
+      .history-panel { grid-column: 2; grid-row: 1; max-width: none; padding: 20px 24px; gap: 10px; }
+      .counter       { grid-column: 2; grid-row: 2; font-size: 0.88rem; }
 
       /* ── カメラ ── */
       .camera-wrap { max-width: 100%; border-radius: 20px; border-width: 3px; }
@@ -398,10 +407,12 @@
         width: 32px; height: 32px; border-width: 4px !important;
       }
 
-      /* ── 最後の会員カード ── */
-      .last-card label { font-size: 0.75rem; }
-      .last-name       { font-size: 1.4rem; }
-      .last-member     { font-size: 0.9rem; }
+      /* ── 受付履歴パネル（iPad） ── */
+      .history-panel > label { font-size: 0.75rem; }
+      .hist-item             { padding: 10px 0; }
+      .hist-name             { font-size: 1.1rem; }
+      .hist-item.latest .hist-name { font-size: 1.25rem; }
+      .hist-meta             { font-size: 0.8rem; }
 
       /* ── サブタブ ── */
       .sub-tab { padding: 14px 10px; font-size: 0.95rem; }
@@ -484,7 +495,7 @@
 
 <div class="mode-tabs">
   <button class="mode-tab active" id="tabQr"     onclick="switchMode('qr')">📷 QRスキャン</button>
-  <button class="mode-tab"        id="tabManual" onclick="switchMode('manual')">🔢 手入力</button>
+  <button class="mode-tab"        id="tabManual" onclick="switchMode('manual')">🙋 カードを忘れた方</button>
 </div>
 
 <div class="main">
@@ -525,11 +536,10 @@
 
   </div>
 
-  <!-- 共通 -->
-  <div class="last-card">
-    <label>最後に受付した会員</label>
-    <p class="last-name"   id="lastName">—</p>
-    <p class="last-member" id="lastMemberId"></p>
+  <!-- 受付履歴（共通） -->
+  <div class="history-panel">
+    <label>受付履歴</label>
+    <div id="historyList"><p class="hist-empty">—</p></div>
   </div>
   <p class="counter" id="counter">本日の受付: 0 件</p>
 </div>
@@ -568,7 +578,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.21-r30';
+  const VERSION     = '2026.05.21-r31';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const OVERLAY_SEC = 3;
 
@@ -578,7 +588,10 @@
   let memberCache   = null;
   let lastScanned   = '';
   let cooldownUntil = 0;
-  let scanCount     = 0;
+  let scanCount       = 0;
+  let recentCheckins  = [];
+  const MAX_HISTORY_SP  = 3;   // スマホ：3件
+  const MAX_HISTORY_PAD = 5;   // iPad ：5件
   let dismissTimer  = null;
   let audioCtx      = null;
   let currentMode   = 'qr';
@@ -693,6 +706,30 @@
       setKanaKeyboard(true);
       if (!IS_IPAD) document.getElementById('nameInput').focus();
     }
+  }
+
+  // ── 受付履歴 ────────────────────────────────────────
+  function pushHistory(fullName, memberId) {
+    const n    = new Date();
+    const time = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+    recentCheckins.unshift({ name: fullName, memberId, time });
+    const max = IS_IPAD ? MAX_HISTORY_PAD : MAX_HISTORY_SP;
+    if (recentCheckins.length > max) recentCheckins.length = max;
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const el = document.getElementById('historyList');
+    if (!recentCheckins.length) {
+      el.innerHTML = '<p class="hist-empty">—</p>';
+      return;
+    }
+    el.innerHTML = recentCheckins.map((item, i) =>
+      `<div class="hist-item${i === 0 ? ' latest' : ''}">
+        <p class="hist-name">${item.name}</p>
+        <p class="hist-meta">${item.memberId}　${item.time}</p>
+      </div>`
+    ).join('');
   }
 
   // ── 会員キャッシュ ──────────────────────────────────
@@ -942,8 +979,7 @@
   async function processCheckin(memberId, note = '会員証QR') {
     const fullName = findMember(memberId) || '（名前なし）';
 
-    document.getElementById('lastName').textContent     = fullName;
-    document.getElementById('lastMemberId').textContent = '会員番号：' + memberId;
+    pushHistory(fullName, memberId);
     scanCount++;
     document.getElementById('counter').textContent = '本日の受付: ' + scanCount + ' 件';
 
