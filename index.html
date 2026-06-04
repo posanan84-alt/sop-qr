@@ -50,14 +50,14 @@
       border-bottom: 1px solid #1e1e2e;
     }
     .mode-tab {
-      flex: 1; padding: 10px;
-      font-size: 0.85rem; font-weight: 600;
+      flex: 1; padding: 20px 10px;
+      font-size: 1.1rem; font-weight: 700;
       text-align: center; cursor: pointer;
       color: #5050a0; background: none; border: none;
-      border-bottom: 2px solid transparent;
-      transition: color 0.2s, border-color 0.2s;
+      border-bottom: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
     }
-    .mode-tab.active { color: #7c6fff; border-bottom-color: #7c6fff; }
+    .mode-tab.active { color: #7c6fff; border-bottom-color: #7c6fff; background: #15151f; }
 
     /* ── メイン ── */
     .main {
@@ -374,7 +374,7 @@
       .cache-dot   { width: 10px; height: 10px; }
 
       /* ── モードタブ ── */
-      .mode-tab { padding: 16px 24px; font-size: 1rem; letter-spacing: 0.04em; }
+      .mode-tab { padding: 32px 24px; font-size: 1.5rem; letter-spacing: 0.04em; border-bottom-width: 4px; }
 
       /* ── メイン：2カラムグリッド ──
          左列（1fr）：QRパネル or 手入力パネル
@@ -578,7 +578,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.05.21-r32';
+  const VERSION     = '2026.06.05-r33';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const OVERLAY_SEC = 3;
