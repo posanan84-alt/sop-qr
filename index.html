@@ -40,9 +40,17 @@
     .hd-title  { font-size: 1rem; font-weight: 700; color: #c0c0e0; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
     .cache-dot { width: 7px; height: 7px; border-radius: 50%; background: #303050; flex-shrink: 0; transition: background 0.4s; }
     .cache-dot.ready { background: #40c070; }
+    .hd-right  { display: flex; align-items: center; gap: 14px; }
     .hd-time   { text-align: right; }
     .hd-date   { font-size: 0.65rem; color: #5050a0; }
     .hd-clock  { font-size: 1.25rem; font-weight: 700; color: #7c6fff; font-variant-numeric: tabular-nums; }
+    .hd-absence-btn {
+      background: #1a1a24; border: 1px solid #3a3a5a; border-radius: 8px;
+      color: #a0a0d0; font-size: 0.72rem; font-weight: 600;
+      padding: 7px 11px; cursor: pointer; white-space: nowrap;
+      font-family: inherit; transition: background 0.15s, border-color 0.15s;
+    }
+    .hd-absence-btn:active { background: #2a2a4a; border-color: #7c6fff; }
 
     /* ── モードタブ ── */
     .mode-tabs {
@@ -308,6 +316,96 @@
     }
     .cf-cancel:active { background: #1e1e2e; }
 
+    /* ── 欠席登録オーバーレイ ── */
+    #absence-overlay {
+      position: fixed; inset: 0;
+      background: #0f0f13;
+      z-index: 195;
+      display: none; flex-direction: column;
+      overflow-y: auto;
+    }
+    #absence-overlay.visible { display: flex; }
+
+    .abs-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid #1e1e2e; flex-shrink: 0;
+    }
+    .abs-header h2 { font-size: 1.1rem; color: #c0c0e0; font-weight: 700; }
+    .abs-close {
+      background: #1a1a24; border: 1px solid #3a3a5a; border-radius: 8px;
+      color: #a0a0c0; font-size: 0.9rem; padding: 8px 14px; cursor: pointer; font-family: inherit;
+    }
+    .abs-close:active { background: #2a2a4a; }
+
+    .abs-body {
+      flex: 1; width: 100%; max-width: 480px; margin: 0 auto;
+      padding: 18px 18px 40px; display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .abs-field { display: flex; flex-direction: column; gap: 6px; }
+    .abs-field > label { font-size: 0.72rem; color: #5050a0; letter-spacing: 0.06em; font-weight: 600; }
+
+    /* 選択中の会員 */
+    .abs-selected {
+      background: #1a1a24; border: 2px solid #2a2a3a; border-radius: 12px;
+      padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .abs-selected.empty { color: #404060; font-size: 0.9rem; }
+    .abs-sel-name { font-size: 1.15rem; font-weight: 800; color: #e8e8ff; }
+    .abs-sel-id   { font-size: 0.72rem; color: #6060a0; margin-top: 2px; }
+    .abs-rechoose {
+      background: none; border: 1px solid #3a3a5a; border-radius: 8px;
+      color: #8080b0; font-size: 0.78rem; padding: 7px 12px; cursor: pointer; font-family: inherit; flex-shrink: 0;
+    }
+    .abs-rechoose:active { background: #2a2a4a; }
+
+    /* 名前検索（欠席用） */
+    .abs-search-wrap { display: flex; flex-direction: column; gap: 8px; }
+    #absResults { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+
+    /* 日付・クラス */
+    .abs-input, .abs-select {
+      background: #1a1a24; border: 2px solid #2a2a3a; border-radius: 12px;
+      padding: 14px 16px; color: #e0e0f0; font-size: 1.05rem; font-family: inherit; width: 100%;
+    }
+    .abs-input:focus, .abs-select:focus { outline: none; border-color: #7c6fff; }
+    .abs-textarea {
+      background: #1a1a24; border: 2px solid #2a2a3a; border-radius: 12px;
+      padding: 14px 16px; color: #e0e0f0; font-size: 1rem; font-family: inherit; width: 100%;
+      min-height: 70px; resize: vertical;
+    }
+    .abs-textarea:focus { outline: none; border-color: #7c6fff; }
+
+    .abs-warn {
+      display: none; font-size: 0.82rem; color: #e0b060;
+      background: #2a2418; border: 1px solid #4a3e20; border-radius: 10px; padding: 10px 14px;
+    }
+    .abs-warn.show { display: block; }
+
+    .abs-submit {
+      padding: 18px; border-radius: 12px; border: none;
+      background: #7c6fff; color: #fff; font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; margin-top: 4px;
+    }
+    .abs-submit:disabled { opacity: 0.35; }
+    .abs-submit:not(:disabled):active { opacity: 0.8; }
+
+    .abs-status { font-size: 0.85rem; text-align: center; min-height: 1.4em; }
+    .abs-status.ok  { color: #60d080; }
+    .abs-status.err { color: #d06060; }
+
+    @media (min-width: 768px) {
+      .abs-header h2 { font-size: 1.4rem; }
+      .abs-body { max-width: 640px; gap: 20px; padding: 28px 28px 60px; }
+      .abs-field > label { font-size: 0.85rem; }
+      .abs-sel-name { font-size: 1.4rem; }
+      .abs-input, .abs-select { font-size: 1.2rem; padding: 16px 18px; }
+      .abs-submit { font-size: 1.25rem; padding: 22px; }
+      #absResults { max-height: 30dvh; }
+      /* iPad：50音キーボード表示時は下に余白 */
+      #absence-overlay.kb-pad .abs-body { padding-bottom: 340px; }
+    }
+
     /* ── フラッシュ ── */
     .flash { position: fixed; inset: 0; background: #7c6fff; opacity: 0; pointer-events: none; z-index: 100; }
     .flash.active { animation: flashAnim 0.25s ease-out forwards; }
@@ -487,9 +585,12 @@
       <span class="cache-dot" id="cacheDot" title="会員データ読込中…"></span>
     </div>
   </div>
-  <div class="hd-time">
-    <div class="hd-date"  id="hdDate">---</div>
-    <div class="hd-clock" id="hdClock">--:--</div>
+  <div class="hd-right">
+    <button class="hd-absence-btn" onclick="openAbsence()">📋 欠席登録</button>
+    <div class="hd-time">
+      <div class="hd-date"  id="hdDate">---</div>
+      <div class="hd-clock" id="hdClock">--:--</div>
+    </div>
   </div>
 </header>
 
@@ -546,6 +647,51 @@
 
 <footer id="versionFooter"></footer>
 
+<!-- 欠席登録オーバーレイ -->
+<div id="absence-overlay">
+  <div class="abs-header">
+    <h2>📋 欠席登録</h2>
+    <button class="abs-close" onclick="closeAbsence()">✕ 閉じる</button>
+  </div>
+  <div class="abs-body">
+
+    <!-- 1. 生徒（名前検索で選択） -->
+    <div class="abs-field">
+      <label>① 生徒（ふりがなで検索）</label>
+      <div class="abs-selected empty" id="absSelected">生徒が選択されていません</div>
+      <div class="abs-search-wrap" id="absSearchWrap">
+        <input class="abs-input" id="absSearchInput" type="search" autocomplete="off"
+               autocorrect="off" spellcheck="false" placeholder="ふりがなで検索（例：こやま）" oninput="onAbsSearch()">
+        <div id="absResults"><p class="name-msg">ふりがなを入力すると候補が表示されます</p></div>
+      </div>
+    </div>
+
+    <!-- 2. 欠席日 -->
+    <div class="abs-field">
+      <label>② 欠席日</label>
+      <input class="abs-input" id="absDate" type="date" onchange="checkAbsWeekday()">
+    </div>
+
+    <!-- 3. クラス -->
+    <div class="abs-field">
+      <label>③ クラス</label>
+      <select class="abs-select" id="absClass" onchange="checkAbsWeekday()">
+        <option value="">読み込み中…</option>
+      </select>
+      <div class="abs-warn" id="absWarn"></div>
+    </div>
+
+    <!-- 4. 備考 -->
+    <div class="abs-field">
+      <label>④ 備考（任意）</label>
+      <textarea class="abs-textarea" id="absRemarks" placeholder="ビデオレッスン希望 など"></textarea>
+    </div>
+
+    <button class="abs-submit" id="absSubmit" onclick="submitAbsence()" disabled>欠席を登録する</button>
+    <p class="abs-status" id="absStatus"></p>
+  </div>
+</div>
+
 <div id="confirm-overlay">
   <div class="cf-box">
     <p class="cf-label">この会員を受付しますか？</p>
@@ -578,9 +724,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.06.05-r33';
+  const VERSION     = '2026.06.06-r34';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
+  const ABSENCE_API = 'https://sop-dance.com/member/absence-form/proxy.php'; // 欠席連絡フォームのGAS中継
   const OVERLAY_SEC = 3;
 
   document.getElementById('versionFooter').textContent = 'v' + VERSION;
@@ -637,6 +784,15 @@
     'ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ',
   };
 
+  // 50音キーボードの入力対象（既定は会員検索欄）
+  // { inputId, onChange, onClear } を切り替えることで欠席登録欄にも使い回す
+  let kanaTarget = { inputId: 'nameInput', onChange: () => onNameInput(), onClear: () => clearNameSearch() };
+
+  function setKanaTarget(t) { kanaTarget = t; }
+
+  function kanaEl()  { return document.getElementById(kanaTarget.inputId); }
+  function kanaFire(){ if (kanaTarget.onChange) kanaTarget.onChange(); }
+
   function buildKanaKeyboard() {
     const grid = document.getElementById('kanaGrid');
     KANA_ROWS.forEach(row => {
@@ -647,38 +803,29 @@
         } else if (ch === '⌫') {
           btn.className = 'kana-key kana-del';
           btn.textContent = ch;
-          btn.onclick = () => {
-            const el = document.getElementById('nameInput');
-            el.value = el.value.slice(0, -1);
-            onNameInput();
-          };
+          btn.onclick = () => { const el = kanaEl(); el.value = el.value.slice(0, -1); kanaFire(); };
         } else if (ch === 'クリア') {
           btn.className = 'kana-key kana-clr';
           btn.textContent = ch;
-          btn.onclick = clearNameSearch;
+          btn.onclick = () => { if (kanaTarget.onClear) kanaTarget.onClear(); };
         } else if (ch === '゛') {
           btn.className = 'kana-key special';
           btn.textContent = ch;
           btn.onclick = () => {
-            const el = document.getElementById('nameInput');
-            const last = el.value.slice(-1);
-            if (DAKUTEN[last]) { el.value = el.value.slice(0,-1) + DAKUTEN[last]; onNameInput(); }
+            const el = kanaEl(); const last = el.value.slice(-1);
+            if (DAKUTEN[last]) { el.value = el.value.slice(0,-1) + DAKUTEN[last]; kanaFire(); }
           };
         } else if (ch === '゜') {
           btn.className = 'kana-key special';
           btn.textContent = ch;
           btn.onclick = () => {
-            const el = document.getElementById('nameInput');
-            const last = el.value.slice(-1);
-            if (HANDAKUTEN[last]) { el.value = el.value.slice(0,-1) + HANDAKUTEN[last]; onNameInput(); }
+            const el = kanaEl(); const last = el.value.slice(-1);
+            if (HANDAKUTEN[last]) { el.value = el.value.slice(0,-1) + HANDAKUTEN[last]; kanaFire(); }
           };
         } else {
           btn.className = 'kana-key';
           btn.textContent = ch;
-          btn.onclick = () => {
-            document.getElementById('nameInput').value += ch;
-            onNameInput();
-          };
+          btn.onclick = () => { kanaEl().value += ch; kanaFire(); };
         }
         grid.appendChild(btn);
       });
@@ -704,6 +851,7 @@
       startCamera();
     } else {
       stopCamera();
+      setKanaTarget({ inputId: 'nameInput', onChange: () => onNameInput(), onClear: () => clearNameSearch() });
       setKanaKeyboard(true);
       if (!IS_IPAD) document.getElementById('nameInput').focus();
     }
@@ -878,6 +1026,228 @@
   function cancelConfirm() {
     pendingMemberId = null;
     document.getElementById('confirm-overlay').classList.remove('visible');
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  欠席登録
+  // ═══════════════════════════════════════════════════════
+  const WEEKDAY_CODES = ['sun','mon','tue','wed','thu','fri','sat'];
+  const WEEKDAY_JP    = ['日','月','火','水','木','金','土'];
+  let absClassList    = [];   // クラス一覧キャッシュ
+  let absSelectedId   = null; // 選択中の会員番号
+  let absClassLoaded  = false;
+
+  function openAbsence() {
+    const ov = document.getElementById('absence-overlay');
+    ov.classList.add('visible');
+    stopCamera(); // カメラ停止（バッテリー節約）
+
+    // 日付を今日に
+    const n = new Date();
+    document.getElementById('absDate').value =
+      n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0');
+
+    // 入力リセット
+    absSelectedId = null;
+    renderAbsSelected();
+    document.getElementById('absSearchInput').value = '';
+    document.getElementById('absResults').innerHTML = '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
+    document.getElementById('absRemarks').value = '';
+    document.getElementById('absStatus').textContent = '';
+    document.getElementById('absStatus').className = 'abs-status';
+    updateAbsSubmit();
+
+    // クラス一覧（初回のみ取得）
+    if (!absClassLoaded) loadAbsClasses();
+
+    // iPad：50音キーボードを欠席用検索欄に向ける
+    if (IS_IPAD) {
+      document.getElementById('absSearchInput').setAttribute('inputmode', 'none');
+      setKanaTarget({ inputId: 'absSearchInput', onChange: () => onAbsSearch(), onClear: () => clearAbsSearch() });
+      ov.classList.add('kb-pad');
+      setKanaKeyboard(true);
+    }
+  }
+
+  function closeAbsence() {
+    document.getElementById('absence-overlay').classList.remove('visible');
+    document.getElementById('absence-overlay').classList.remove('kb-pad');
+    if (IS_IPAD) {
+      // キーボードの対象を会員検索へ戻す
+      setKanaTarget({ inputId: 'nameInput', onChange: () => onNameInput(), onClear: () => clearNameSearch() });
+      setKanaKeyboard(currentMode === 'manual');
+    }
+    // QRモードならカメラ再開
+    if (currentMode === 'qr') startCamera();
+  }
+
+  // クラス一覧を取得（欠席フォームのGAS proxy 経由）
+  async function loadAbsClasses() {
+    const sel = document.getElementById('absClass');
+    try {
+      const res  = await fetch(ABSENCE_API + '?action=getClassList');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      absClassList   = data.classList;
+      absClassLoaded = true;
+
+      const todayCode = WEEKDAY_CODES[new Date().getDay()];
+      const todayJP   = WEEKDAY_JP[new Date().getDay()];
+      const today  = absClassList.filter(c => c.weekday_code === todayCode);
+      const others = absClassList.filter(c => c.weekday_code !== todayCode);
+
+      sel.innerHTML = '<option value="">クラスを選択してください</option>';
+      if (today.length) {
+        const g = document.createElement('optgroup');
+        g.label = '今日（' + todayJP + '曜）のクラス';
+        today.forEach(c => g.appendChild(absClassOption(c, false)));
+        sel.appendChild(g);
+      }
+      if (others.length) {
+        const g = document.createElement('optgroup');
+        g.label = 'その他のクラス';
+        others.forEach(c => g.appendChild(absClassOption(c, true)));
+        sel.appendChild(g);
+      }
+    } catch (err) {
+      sel.innerHTML = '<option value="">クラスの読み込みに失敗しました</option>';
+    }
+  }
+
+  function absClassOption(c, withDay) {
+    const opt = document.createElement('option');
+    opt.value = c.class_code;
+    opt.textContent = withDay
+      ? c['略称'] + '　' + c['正式名称'] + '（' + c['開催曜日'] + ' ' + c['開始時刻'] + '〜）'
+      : c['略称'] + '　' + c['正式名称'] + '（' + c['開始時刻'] + '〜）';
+    return opt;
+  }
+
+  // 欠席用 名前検索
+  function onAbsSearch() {
+    const q  = document.getElementById('absSearchInput').value;
+    const el = document.getElementById('absResults');
+    if (!q.trim()) {
+      el.innerHTML = '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
+      return;
+    }
+    if (!memberCache) { el.innerHTML = '<p class="name-msg">会員データ読込中…</p>'; return; }
+    const results = searchMembers(q);
+    if (!results.length) { el.innerHTML = '<p class="name-msg">該当する会員が見つかりません</p>'; return; }
+    el.innerHTML = results.map(([id, m]) => {
+      const name = (m.lastName || '') + '　' + (m.firstName || '');
+      const kana = getKana(m);
+      return `<div class="name-result" onclick="selectAbsMember('${id}')">
+        <div class="nr-name">${name}</div>
+        ${kana ? `<div class="nr-kana">${kana}</div>` : ''}
+        <div class="nr-id">会員番号：${id}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function clearAbsSearch() {
+    document.getElementById('absSearchInput').value = '';
+    document.getElementById('absResults').innerHTML = '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
+  }
+
+  function selectAbsMember(id) {
+    absSelectedId = id;
+    renderAbsSelected();
+    updateAbsSubmit();
+  }
+
+  function renderAbsSelected() {
+    const box  = document.getElementById('absSelected');
+    const wrap = document.getElementById('absSearchWrap');
+    if (!absSelectedId) {
+      box.className = 'abs-selected empty';
+      box.textContent = '生徒が選択されていません';
+      wrap.style.display = 'flex';
+      return;
+    }
+    const m = memberCache[absSelectedId] || {};
+    box.className = 'abs-selected';
+    box.innerHTML =
+      `<div>
+        <div class="abs-sel-name">${(m.lastName||'')}　${(m.firstName||'')}</div>
+        <div class="abs-sel-id">会員番号：${absSelectedId}</div>
+      </div>
+      <button class="abs-rechoose" onclick="rechooseAbsMember()">選び直す</button>`;
+    wrap.style.display = 'none'; // 選択後は検索欄を隠す
+  }
+
+  function rechooseAbsMember() {
+    absSelectedId = null;
+    renderAbsSelected();
+    clearAbsSearch();
+    updateAbsSubmit();
+    if (!IS_IPAD) document.getElementById('absSearchInput').focus();
+  }
+
+  function checkAbsWeekday() {
+    const dateVal  = document.getElementById('absDate').value;
+    const classVal = document.getElementById('absClass').value;
+    const warn     = document.getElementById('absWarn');
+    updateAbsSubmit();
+    if (!dateVal || !classVal || !absClassList.length) { warn.classList.remove('show'); return; }
+    const [y,mo,d] = dateVal.split('-').map(Number);
+    const wcode    = WEEKDAY_CODES[new Date(y, mo-1, d).getDay()];
+    const wjp      = WEEKDAY_JP[new Date(y, mo-1, d).getDay()];
+    const cls      = absClassList.find(c => c.class_code === classVal);
+    if (cls && wcode !== cls.weekday_code) {
+      warn.textContent = '⚠️ 選択クラスは「' + cls['開催曜日'] + '」ですが、欠席日は「' + wjp + '曜日」です。よろしいですか？';
+      warn.classList.add('show');
+    } else {
+      warn.classList.remove('show');
+    }
+  }
+
+  function updateAbsSubmit() {
+    const ok = absSelectedId && document.getElementById('absDate').value && document.getElementById('absClass').value;
+    document.getElementById('absSubmit').disabled = !ok;
+  }
+
+  async function submitAbsence() {
+    if (!absSelectedId) return;
+    const m    = memberCache[absSelectedId] || {};
+    const date = document.getElementById('absDate').value;
+    const cls  = document.getElementById('absClass').value;
+    if (!date || !cls) return;
+
+    const status = document.getElementById('absStatus');
+    const btn    = document.getElementById('absSubmit');
+    btn.disabled = true;
+    status.className = 'abs-status';
+    status.textContent = '送信中…';
+
+    try {
+      const params = new URLSearchParams({
+        action:      'submitAbsence',
+        生徒名かな:  (m.lastName||'') + ' ' + (m.firstName||''),
+        会員番号:    absSelectedId,
+        class_code:  cls,
+        欠席日:      date,
+        備考:        document.getElementById('absRemarks').value.trim(),
+      });
+      const res    = await fetch(ABSENCE_API + '?' + params.toString());
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message || '送信に失敗しました');
+
+      status.className = 'abs-status ok';
+      status.textContent = '✅ 欠席を登録しました（' + (m.lastName||'') + ' ' + (m.firstName||'') + '）';
+      // 次の登録に備えて生徒のみリセット
+      setTimeout(() => {
+        absSelectedId = null;
+        renderAbsSelected();
+        clearAbsSearch();
+        document.getElementById('absRemarks').value = '';
+        updateAbsSubmit();
+      }, 1500);
+    } catch (err) {
+      status.className = 'abs-status err';
+      status.textContent = '❌ ' + err.message;
+      btn.disabled = false;
+    }
   }
 
   // ── QR解析 ──────────────────────────────────────────
