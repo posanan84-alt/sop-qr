@@ -82,6 +82,7 @@
       background: #1a1a24; border: 2px solid #2a2a3a;
     }
     #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #video.mirror { transform: scaleX(-1); } /* iPadフロントカメラの鏡像表示 */
 
     .scan-overlay {
       position: absolute; inset: 0;
@@ -724,7 +725,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.06.08-r35';
+  const VERSION     = '2026.06.08-r36';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const ABSENCE_API = 'https://sop-dance.com/member/absence-form/proxy.php'; // 欠席連絡フォームのGAS中継
@@ -1387,8 +1388,16 @@
     if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
   }
 
+  // iPad かつフロントカメラのときだけ、表示を左右反転（鏡像）にする
+  // ※ QR読み取りは実映像から行うため精度には影響しない
+  function updateMirror() {
+    const mirror = IS_IPAD && facingMode === 'user';
+    video.classList.toggle('mirror', mirror);
+  }
+
   async function startCamera() {
     stopCamera();
+    updateMirror();
     try {
       currentStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode, width: { ideal: 640 }, height: { ideal: 640 } }
@@ -1406,6 +1415,7 @@
 
   function flipCamera() {
     facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    updateMirror();
     startCamera();
   }
 
