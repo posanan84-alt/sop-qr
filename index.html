@@ -89,17 +89,28 @@
       display: flex; align-items: center; justify-content: center;
       pointer-events: none;
     }
-    .scan-frame { width: 60%; aspect-ratio: 1; position: relative; }
-    .scan-frame::before, .scan-frame::after,
-    .scan-frame > span::before, .scan-frame > span::after {
-      content: ''; position: absolute; width: 24px; height: 24px;
-      border-color: #7c6fff; border-style: solid;
+    /* スキャン枠：中央を明るく、外側を暗くマスクして「ここにかざす」を明示 */
+    .scan-window {
+      position: relative;
+      width: 66%; aspect-ratio: 1;
+      border-radius: 18px;
+      border: 2px solid rgba(124,111,255,0.55);
+      box-shadow: 0 0 0 2000px rgba(8,8,14,0.5); /* 枠の外を暗く */
+      display: flex; align-items: flex-end; justify-content: center;
     }
-    .scan-frame::before  { top:0;    left:0;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
-    .scan-frame::after   { top:0;    right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
-    .scan-frame > span::before { bottom:0; left:0;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
-    .scan-frame > span::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-    .scan-line { display: none; }
+    /* 四隅の太いコーナー（1つの大きな枠だと分かるように） */
+    .sw-corner { position: absolute; width: 30px; height: 30px; border: 4px solid #7c6fff; }
+    .sw-corner.tl { top: -2px; left: -2px;  border-right: none;  border-bottom: none; border-radius: 14px 0 0 0; }
+    .sw-corner.tr { top: -2px; right: -2px; border-left: none;   border-bottom: none; border-radius: 0 14px 0 0; }
+    .sw-corner.bl { bottom: -2px; left: -2px;  border-right: none; border-top: none;  border-radius: 0 0 0 14px; }
+    .sw-corner.br { bottom: -2px; right: -2px; border-left: none;  border-top: none;  border-radius: 0 0 14px 0; }
+    /* 枠内の案内テキスト */
+    .scan-hint {
+      margin-bottom: 14px; padding: 6px 14px;
+      background: rgba(8,8,14,0.55); border-radius: 10px;
+      color: #fff; font-size: 0.82rem; font-weight: 700; line-height: 1.4;
+      text-align: center; letter-spacing: 0.02em;
+    }
 
     #btnFlip {
       position: absolute; top: 10px; right: 10px;
@@ -500,11 +511,10 @@
       #btnFlip svg { width: 28px; height: 28px; }
       .status      { font-size: 1rem; margin-top: 6px; }
 
-      /* スキャン枠の角を少し大きく */
-      .scan-frame::before, .scan-frame::after,
-      .scan-frame > span::before, .scan-frame > span::after {
-        width: 32px; height: 32px; border-width: 4px !important;
-      }
+      /* スキャン枠：iPadは枠・コーナー・案内文を大きく */
+      .scan-window { width: 60%; border-width: 3px; }
+      .sw-corner   { width: 48px; height: 48px; border-width: 6px; }
+      .scan-hint   { margin-bottom: 22px; padding: 10px 20px; font-size: 1.15rem; }
 
       /* ── 受付履歴パネル（iPad） ── */
       .history-panel > label { font-size: 0.75rem; }
@@ -607,7 +617,11 @@
     <div class="camera-wrap">
       <video id="video" autoplay muted playsinline></video>
       <div class="scan-overlay">
-        <div class="scan-frame"><span></span><div class="scan-line"></div></div>
+        <div class="scan-window">
+          <span class="sw-corner tl"></span><span class="sw-corner tr"></span>
+          <span class="sw-corner bl"></span><span class="sw-corner br"></span>
+          <div class="scan-hint">この枠の中に<br>カードをかざす</div>
+        </div>
       </div>
       <button id="btnFlip" onclick="flipCamera()" title="カメラ切り替え">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -725,7 +739,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.06.08-r36';
+  const VERSION     = '2026.06.08-r37';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const ABSENCE_API = 'https://sop-dance.com/member/absence-form/proxy.php'; // 欠席連絡フォームのGAS中継
