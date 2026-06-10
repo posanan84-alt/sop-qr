@@ -235,7 +235,19 @@
     .name-msg { font-size: 0.82rem; color: #404060; text-align: center; padding: 20px 0; }
     .name-subhint { display: none; font-size: 0.78rem; color: #404060; padding: 0 4px; }
 
+    /* 名前ペインの左右カラム（スマホは縦積み・iPadで2カラム化） */
+    .np-left  { display: flex; flex-direction: column; gap: 10px; }
+    .np-right { min-width: 0; }
+
+    /* ── フリックキーボード（既定は非表示・iPadのみ表示） ── */
+    .flick-kb { display: none; }
+    #flick-popup { display: none; }
+
     /* ── 受付履歴パネル ── */
+    /* 受付履歴はQRスキャン時のみ表示（手入力時は隠す） */
+    body.mode-manual .history-panel,
+    body.mode-manual .counter { display: none; }
+
     .history-panel {
       width: 100%; max-width: 370px;
       background: #1a1a24; border-radius: 12px;
@@ -547,21 +559,66 @@
       .btn-submit     { padding: 20px; font-size: 1.15rem; border-radius: 14px; }
       .btn-clear      { padding: 20px; font-size: 1rem;    border-radius: 14px; }
 
-      /* ── 名前検索 ── */
-      #namePane        { gap: 14px; }
+      /* ── 名前検索（iPad：左キーボード／右 全候補スクロール 2カラム） ── */
+      /* 手入力モードではパネルを全幅に */
+      body.mode-manual #manualPanel { grid-column: 1 / -1; }
+
+      #namePane {
+        display: grid;
+        grid-template-columns: 460px 1fr;
+        gap: 28px; align-items: start;
+      }
+      .np-left  { gap: 12px; position: sticky; top: 0; }
       .name-subhint    { display: block; }
       .name-search-box { padding: 16px 22px; border-radius: 16px; border-width: 2px; }
-      #nameInput       { font-size: 1.3rem; }
-      .name-search-box span { font-size: 1.3rem; }
-      #nameClear       { font-size: 1.4rem; }
+      #nameInput       { font-size: 1.5rem; }
+      .name-search-box span { font-size: 1.4rem; }
+      #nameClear       { font-size: 1.5rem; }
 
-      .name-results  { max-height: 52dvh; gap: 10px; }
+      /* 右：候補を全員スクロール表示 */
+      .name-results  { max-height: calc(100dvh - 220px); gap: 10px; }
       .name-result   { padding: 18px 22px; border-radius: 14px; gap: 5px; }
       .name-result:active { border-width: 2px; }
-      .nr-name { font-size: 1.25rem; }
-      .nr-kana { font-size: 0.92rem; }
-      .nr-id   { font-size: 0.84rem; margin-top: 2px; }
-      .name-msg { font-size: 0.95rem; padding: 32px 0; }
+      .nr-name { font-size: 1.4rem; }
+      .nr-kana { font-size: 1rem; }
+      .nr-id   { font-size: 0.9rem; margin-top: 2px; }
+      .name-msg { font-size: 1rem; padding: 32px 0; }
+
+      /* フリックキーボード本体 */
+      .flick-kb {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px; margin-top: 4px;
+      }
+      .flick-key {
+        position: relative;
+        background: #1a1a24; border: 2px solid #2a2a3a; border-radius: 16px;
+        height: 78px; display: flex; align-items: center; justify-content: center;
+        font-size: 2.1rem; font-weight: 700; color: #d0d0f0;
+        cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: none;
+      }
+      .flick-key.pressing { background: #2a2a4a; border-color: #7c6fff; }
+      .flick-key.special  { font-size: 1.5rem; color: #9080c0; }
+
+      /* フリックポップアップ（十字） */
+      #flick-popup {
+        position: fixed; z-index: 300; pointer-events: none;
+        width: 192px; height: 192px; transform: translate(-50%, -50%);
+      }
+      #flick-popup.show { display: block; }
+      .fp-cell {
+        position: absolute; width: 62px; height: 62px;
+        display: flex; align-items: center; justify-content: center;
+        background: #2e2e42; color: #fff; font-size: 1.8rem; font-weight: 700;
+        border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      }
+      .fp-cell.c { left: 65px; top: 65px; background: #3a3a5a; }
+      .fp-cell.u { left: 65px; top: 0; }
+      .fp-cell.d { left: 65px; top: 130px; }
+      .fp-cell.l { left: 0;   top: 65px; }
+      .fp-cell.r { left: 130px; top: 65px; }
+      .fp-cell.active { background: #7c6fff; transform: scale(1.08); }
+      .fp-cell.hidden { display: none; }
 
       /* ── 確認モーダル ── */
       .cf-box    { max-width: 520px; padding: 44px 40px; gap: 14px; border-radius: 24px; }
@@ -638,15 +695,21 @@
 
     <!-- 名前検索ペイン -->
     <div id="namePane">
-      <div class="name-search-box">
-        <span>🔍</span>
-        <input id="nameInput" type="search" inputmode="search" autocomplete="off" autocorrect="off"
-               spellcheck="false" placeholder="ふりがなで検索（例：こやま）" oninput="onNameInput()">
-        <button id="nameClear" onclick="clearNameSearch()">✕</button>
+      <div class="np-left">
+        <div class="name-search-box">
+          <span>🔍</span>
+          <input id="nameInput" type="search" inputmode="search" autocomplete="off" autocorrect="off"
+                 spellcheck="false" placeholder="ふりがなで検索（例：こやま）" oninput="onNameInput()">
+          <button id="nameClear" onclick="clearNameSearch()">✕</button>
+        </div>
+        <p class="name-subhint" id="nameSubhint">姓のふりがなで検索します</p>
+        <!-- フリックキーボード（iPadのみ・JSで生成） -->
+        <div id="flickKeyboard" class="flick-kb"></div>
       </div>
-      <p class="name-subhint" id="nameSubhint">姓のふりがなで検索します</p>
-      <div class="name-results" id="nameResults">
-        <p class="name-msg">ふりがなを入力すると候補が表示されます</p>
+      <div class="np-right">
+        <div class="name-results" id="nameResults">
+          <p class="name-msg">ふりがなを入力すると候補が表示されます</p>
+        </div>
       </div>
     </div>
 
@@ -734,12 +797,21 @@
 
 <div class="flash" id="flash"></div>
 
-<!-- 50音キーボード（iPad専用・JS で生成） -->
+<!-- 50音キーボード（欠席登録オーバーレイ用・JS で生成） -->
 <div id="kana-keyboard"><div class="kana-grid" id="kanaGrid"></div></div>
+
+<!-- フリック入力ポップアップ（名前検索用） -->
+<div id="flick-popup">
+  <div class="fp-cell c" data-d="c"></div>
+  <div class="fp-cell u" data-d="u"></div>
+  <div class="fp-cell d" data-d="d"></div>
+  <div class="fp-cell l" data-d="l"></div>
+  <div class="fp-cell r" data-d="r"></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.06.08-r37';
+  const VERSION     = '2026.06.10-r38';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const ABSENCE_API = 'https://sop-dance.com/member/absence-form/proxy.php'; // 欠席連絡フォームのGAS中継
@@ -853,6 +925,122 @@
     document.body.classList.toggle('kb-open', visible);
   }
 
+  // ── フリックキーボード（名前検索用・iPad） ──────────
+  // 各キー：c=中央(タップ), u=上, d=下, l=左, r=右
+  const FLICK_KEYS = [
+    { c:'あ', l:'い', u:'う', r:'え', d:'お' },
+    { c:'か', l:'き', u:'く', r:'け', d:'こ' },
+    { c:'さ', l:'し', u:'す', r:'せ', d:'そ' },
+    { c:'た', l:'ち', u:'つ', r:'て', d:'と' },
+    { c:'な', l:'に', u:'ぬ', r:'ね', d:'の' },
+    { c:'は', l:'ひ', u:'ふ', r:'へ', d:'ほ' },
+    { c:'ま', l:'み', u:'む', r:'め', d:'も' },
+    { c:'や', u:'ゆ', d:'よ' },
+    { c:'ら', l:'り', u:'る', r:'れ', d:'ろ' },
+    { c:'゛゜', special:'daku' },
+    { c:'わ', l:'を', u:'ん', r:'ー' },
+    { c:'⌫', special:'del' },
+  ];
+  // ゛゜キーで循環する文字グループ
+  const VARIANT_GROUPS = [
+    ['か','が'],['き','ぎ'],['く','ぐ'],['け','げ'],['こ','ご'],
+    ['さ','ざ'],['し','じ'],['す','ず'],['せ','ぜ'],['そ','ぞ'],
+    ['た','だ'],['ち','ぢ'],['つ','づ','っ'],['て','で'],['と','ど'],
+    ['は','ば','ぱ'],['ひ','び','ぴ'],['ふ','ぶ','ぷ'],['へ','べ','ぺ'],['ほ','ぼ','ぽ'],
+    ['あ','ぁ'],['い','ぃ'],['う','ぅ'],['え','ぇ'],['お','ぉ'],
+    ['や','ゃ'],['ゆ','ゅ'],['よ','ょ'],['わ','ゎ'],
+  ];
+
+  let flickState = null;
+
+  function buildFlickKeyboard() {
+    const kb = document.getElementById('flickKeyboard');
+    FLICK_KEYS.forEach(def => {
+      const key = document.createElement('div');
+      key.className = 'flick-key' + (def.special ? ' special' : '');
+      key.textContent = def.c;
+      key.addEventListener('pointerdown', e => flickDown(e, key, def));
+      kb.appendChild(key);
+    });
+    // ポップアップ外でのpointermove/up も拾う
+    window.addEventListener('pointermove', flickMove);
+    window.addEventListener('pointerup',   flickUp);
+  }
+
+  function flickDown(e, key, def) {
+    e.preventDefault();
+    flickState = { def, key, x: e.clientX, y: e.clientY, dir: 'c' };
+    key.classList.add('pressing');
+    if (!def.special) showFlickPopup(e.clientX, e.clientY, def);
+  }
+
+  function flickMove(e) {
+    if (!flickState || flickState.def.special) return;
+    const dx = e.clientX - flickState.x, dy = e.clientY - flickState.y;
+    const TH = 26;
+    let dir = 'c';
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx >  TH) dir = 'r'; else if (dx < -TH) dir = 'l';
+    } else {
+      if (dy >  TH) dir = 'd'; else if (dy < -TH) dir = 'u';
+    }
+    if (dir !== 'c' && !flickState.def[dir]) dir = 'c';
+    flickState.dir = dir;
+    highlightFlick(dir);
+  }
+
+  function flickUp() {
+    if (!flickState) return;
+    const { def, key, dir } = flickState;
+    key.classList.remove('pressing');
+    hideFlickPopup();
+    if (def.special === 'del')  { kanaDelete(); }
+    else if (def.special === 'daku') { kanaDakuten(); }
+    else { kanaAppend(def[dir] || def.c); }
+    flickState = null;
+  }
+
+  function kanaAppend(ch) {
+    const el = document.getElementById('nameInput');
+    el.value += ch; onNameInput();
+  }
+  function kanaDelete() {
+    const el = document.getElementById('nameInput');
+    el.value = el.value.slice(0, -1); onNameInput();
+  }
+  function kanaDakuten() {
+    const el = document.getElementById('nameInput');
+    const last = el.value.slice(-1);
+    if (!last) return;
+    for (const g of VARIANT_GROUPS) {
+      const i = g.indexOf(last);
+      if (i !== -1) { el.value = el.value.slice(0,-1) + g[(i+1) % g.length]; onNameInput(); return; }
+    }
+  }
+
+  function showFlickPopup(x, y, def) {
+    const pop = document.getElementById('flick-popup');
+    pop.style.left = x + 'px';
+    pop.style.top  = y + 'px';
+    ['c','u','d','l','r'].forEach(d => {
+      const cell = pop.querySelector('.fp-cell.' + d);
+      const ch = def[d];
+      cell.textContent = ch || '';
+      cell.classList.toggle('hidden', !ch);
+      cell.classList.toggle('active', d === 'c');
+    });
+    pop.classList.add('show');
+  }
+  function highlightFlick(dir) {
+    const pop = document.getElementById('flick-popup');
+    ['c','u','d','l','r'].forEach(d => {
+      pop.querySelector('.fp-cell.' + d).classList.toggle('active', d === dir);
+    });
+  }
+  function hideFlickPopup() {
+    document.getElementById('flick-popup').classList.remove('show');
+  }
+
   // ── モード切り替え ──────────────────────────────────
   function switchMode(mode) {
     currentMode = mode;
@@ -860,14 +1048,16 @@
     document.getElementById('tabManual').classList.toggle('active', mode === 'manual');
     document.getElementById('qrPanel').style.display     = mode === 'qr'     ? 'flex' : 'none';
     document.getElementById('manualPanel').style.display = mode === 'manual' ? 'flex' : 'none';
+    document.body.classList.toggle('mode-manual', mode === 'manual');
+    document.body.classList.toggle('mode-qr',     mode === 'qr');
 
     if (mode === 'qr') {
-      setKanaKeyboard(false);
+      setKanaKeyboard(false);   // 50音キーボードは欠席登録専用なので閉じる
       startCamera();
     } else {
       stopCamera();
-      setKanaTarget({ inputId: 'nameInput', onChange: () => onNameInput(), onClear: () => clearNameSearch() });
-      setKanaKeyboard(true);
+      // 名前検索：iPadはフリックキーボード（左側常時表示）、スマホはネイティブキーボード
+      clearNameSearch();        // 検索欄リセット＋候補一覧を初期表示
       if (!IS_IPAD) document.getElementById('nameInput').focus();
     }
   }
@@ -952,7 +1142,22 @@
       );
       if (matched) results.push([id, m]);
     }
-    return results.slice(0, 8);
+    return sortByKana(results);
+  }
+
+  // ふりがな（姓→名）順で並べ替え
+  function sortByKana(list) {
+    return list.sort((a, b) => {
+      const ka = ((a[1].lastName || '') + (a[1].firstName || ''));
+      const kb = ((b[1].lastName || '') + (b[1].firstName || ''));
+      return ka.localeCompare(kb, 'ja');
+    });
+  }
+
+  // 全会員（ふりがな順）
+  function allMembersSorted() {
+    if (!memberCache) return [];
+    return sortByKana(Object.entries(memberCache));
   }
 
   // デバッグ: 会員データ構造を確認する関数（コンソールから呼べます）
@@ -997,14 +1202,16 @@
   function onNameInput() {
     const q = document.getElementById('nameInput').value;
     document.getElementById('nameClear').classList.toggle('show', q.length > 0);
-    if (!q.trim()) {
-      document.getElementById('nameResults').innerHTML =
-        '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
+    const el = document.getElementById('nameResults');
+
+    if (!memberCache) {
+      el.innerHTML = '<p class="name-msg">会員データ読込中…</p>';
       return;
     }
-    if (!memberCache) {
-      document.getElementById('nameResults').innerHTML =
-        '<p class="name-msg">会員データ読込中…</p>';
+    if (!q.trim()) {
+      // iPad：全候補をスクロール表示／スマホ：案内文
+      if (IS_IPAD) renderNameResults(allMembersSorted());
+      else el.innerHTML = '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
       return;
     }
     renderNameResults(searchMembers(q));
@@ -1013,9 +1220,8 @@
   function clearNameSearch() {
     document.getElementById('nameInput').value = '';
     document.getElementById('nameClear').classList.remove('show');
-    document.getElementById('nameResults').innerHTML =
-      '<p class="name-msg">ふりがなを入力すると候補が表示されます</p>';
-    document.getElementById('nameInput').focus();
+    onNameInput(); // 候補一覧を初期表示に戻す（iPadは全員表示）
+    if (!IS_IPAD) document.getElementById('nameInput').focus();
   }
 
   let pendingMemberId = null;
@@ -1453,11 +1659,13 @@
 
   // ── 起動 ─────────────────────────────────────────────
   warmupMembers();
+  document.body.classList.add('mode-qr');
   if (IS_IPAD) {
-    // iPad：インカメラ初期設定・50音キーボード生成・ネイティブキーボード抑制
+    // iPad：インカメラ初期設定・キーボード生成・ネイティブキーボード抑制
     facingMode = 'user';
     document.getElementById('nameInput').setAttribute('inputmode', 'none');
-    buildKanaKeyboard();
+    buildKanaKeyboard();   // 50音（欠席登録用）
+    buildFlickKeyboard();  // フリック（名前検索用）
   }
   startCamera();
 </script>
