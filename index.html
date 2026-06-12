@@ -89,7 +89,7 @@
       border-radius: 18px;
       border: 2px solid rgba(124,111,255,0.55);
       box-shadow: 0 0 0 2000px rgba(8,8,14,0.5); /* 枠の外を暗く */
-      display: flex; align-items: flex-end; justify-content: center;
+      display: flex; align-items: center; justify-content: center;
     }
     /* 四隅の太いコーナー（1つの大きな枠だと分かるように） */
     .sw-corner { position: absolute; width: 30px; height: 30px; border: 4px solid #7c6fff; }
@@ -97,12 +97,10 @@
     .sw-corner.tr { top: -2px; right: -2px; border-left: none;   border-bottom: none; border-radius: 0 14px 0 0; }
     .sw-corner.bl { bottom: -2px; left: -2px;  border-right: none; border-top: none;  border-radius: 0 0 0 14px; }
     .sw-corner.br { bottom: -2px; right: -2px; border-left: none;  border-top: none;  border-radius: 0 0 14px 0; }
-    /* 枠内の案内テキスト */
-    .scan-hint {
-      margin-bottom: 14px; padding: 6px 14px;
-      background: rgba(8,8,14,0.55); border-radius: 10px;
-      color: #fff; font-size: 0.82rem; font-weight: 700; line-height: 1.4;
-      text-align: center; letter-spacing: 0.02em;
+    /* 枠内のQRサンプル透かし */
+    .scan-qr-sample {
+      width: 58%; height: 58%;
+      color: #fff; opacity: 0.16; pointer-events: none;
     }
 
     #btnFlip {
@@ -398,7 +396,6 @@
       /* スキャン枠：iPadは枠・コーナー・案内文を大きく */
       .scan-window { width: 60%; border-width: 3px; }
       .sw-corner   { width: 48px; height: 48px; border-width: 6px; }
-      .scan-hint   { margin-bottom: 22px; padding: 10px 20px; font-size: 1.15rem; }
 
       /* ── 受付履歴パネル（iPad） ── */
       .history-panel > label { font-size: 0.75rem; }
@@ -545,7 +542,33 @@
         <div class="scan-window">
           <span class="sw-corner tl"></span><span class="sw-corner tr"></span>
           <span class="sw-corner bl"></span><span class="sw-corner br"></span>
-          <div class="scan-hint">この枠の中に<br>カードをかざす</div>
+          <svg class="scan-qr-sample" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <!-- ファインダーパターン（三隅） -->
+            <g fill="none" stroke="currentColor" stroke-width="4">
+              <rect x="2"  y="2"  width="22" height="22" rx="2"/>
+              <rect x="76" y="2"  width="22" height="22" rx="2"/>
+              <rect x="2"  y="76" width="22" height="22" rx="2"/>
+            </g>
+            <rect x="9"  y="9"  width="8" height="8"/>
+            <rect x="83" y="9"  width="8" height="8"/>
+            <rect x="9"  y="83" width="8" height="8"/>
+            <!-- アライメントパターン（右下） -->
+            <g fill="none" stroke="currentColor" stroke-width="3.5">
+              <rect x="74" y="74" width="16" height="16" rx="1.5"/>
+            </g>
+            <rect x="80" y="80" width="4" height="4"/>
+            <!-- データ風モジュール -->
+            <g>
+              <rect x="32" y="6"  width="5" height="5"/><rect x="44" y="6"  width="5" height="5"/><rect x="56" y="6"  width="5" height="5"/>
+              <rect x="38" y="12" width="5" height="5"/><rect x="50" y="12" width="5" height="5"/><rect x="62" y="12" width="5" height="5"/>
+              <rect x="6"  y="32" width="5" height="5"/><rect x="12" y="38" width="5" height="5"/><rect x="6"  y="50" width="5" height="5"/><rect x="12" y="62" width="5" height="5"/>
+              <rect x="32" y="32" width="5" height="5"/><rect x="44" y="38" width="5" height="5"/><rect x="56" y="32" width="5" height="5"/><rect x="38" y="44" width="5" height="5"/>
+              <rect x="50" y="50" width="5" height="5"/><rect x="62" y="44" width="5" height="5"/><rect x="32" y="56" width="5" height="5"/><rect x="44" y="62" width="5" height="5"/><rect x="56" y="62" width="5" height="5"/>
+              <rect x="68" y="32" width="5" height="5"/><rect x="80" y="38" width="5" height="5"/><rect x="92" y="32" width="5" height="5"/><rect x="68" y="50" width="5" height="5"/><rect x="80" y="56" width="5" height="5"/>
+              <rect x="32" y="68" width="5" height="5"/><rect x="44" y="80" width="5" height="5"/><rect x="56" y="92" width="5" height="5"/><rect x="38" y="86" width="5" height="5"/>
+              <rect x="6"  y="44" width="5" height="5"/><rect x="20" y="56" width="5" height="5"/>
+            </g>
+          </svg>
         </div>
       </div>
       <button id="btnFlip" onclick="flipCamera()" title="カメラ切り替え">
@@ -631,7 +654,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.06.12-r39';
+  const VERSION     = '2026.06.12-r40';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const OVERLAY_SEC = 2;
