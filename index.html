@@ -654,7 +654,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.06.12-r40';
+  const VERSION     = '2026.06.12-r41';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const OVERLAY_SEC = 2;
@@ -1005,6 +1005,7 @@
     document.getElementById('confirm-overlay').classList.remove('visible');
     clearNameSearch();
     await processCheckin(id, '手入力（名前検索）');
+    switchMode('qr'); // 申請後は自動でQR読み取りに戻る
   }
 
   function cancelConfirm() {
