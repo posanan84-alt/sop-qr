@@ -45,6 +45,21 @@
     .hd-date   { font-size: 0.65rem; color: #5050a0; }
     .hd-clock  { font-size: 1.25rem; font-weight: 700; color: #7c6fff; font-variant-numeric: tabular-nums; }
 
+    /* ── 受付モード切替（月謝 / 回数券） ── */
+    .mode-switch {
+      display: flex; border: 1px solid #2a2a3a; border-radius: 10px; overflow: hidden;
+    }
+    .ms-btn {
+      background: #14141c; border: none; color: #5050a0;
+      font-size: 0.75rem; font-weight: 700; font-family: inherit;
+      padding: 8px 12px; cursor: pointer; white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+    }
+    .ms-btn.active { background: #7c6fff; color: #fff; }
+    /* 回数券モード中はヘッダー全体をうっすら緑系にして気付けるように */
+    body.ticket-mode header { border-bottom-color: #2a5a3a; }
+    body.ticket-mode .ms-btn.active { background: #2fa46a; }
+
     /* ── モードタブ ── */
     .mode-tabs {
       width: 100%; display: flex;
@@ -337,6 +352,10 @@
       text-align: center; line-height: 1.2; margin-bottom: 10px;
     }
     .ov-meta { font-size: 1rem; color: #6060a0; text-align: center; }
+    .ov-ticket { display: none; margin-top: 12px; padding: 8px 18px; border-radius: 10px;
+      font-size: 1.05rem; font-weight: 700; text-align: center; }
+    .ov-ticket.ok   { display: block; background: #12301f; color: #5fd08a; border: 1px solid #1f5c38; }
+    .ov-ticket.warn { display: block; background: #33200f; color: #e0a060; border: 1px solid #5c3c1f; }
     .ov-welcome { margin-top: 16px; font-size: clamp(1rem, 4vw, 1.4rem); font-weight: 700; color: #c0f0d0; text-align: center; }
     .ov-sub { margin-top: 8px; font-size: 0.78rem; color: #404060; text-align: center; min-height: 1.2em; }
     .ov-hint { margin-top: 24px; font-size: 0.7rem; color: #303050; }
@@ -357,6 +376,7 @@
 
       /* ── ヘッダー ── */
       header       { padding: 18px 40px; }
+      .ms-btn      { font-size: 1rem; padding: 12px 20px; }
       .hd-school   { font-size: 0.8rem; }
       .hd-title    { font-size: 1.35rem; gap: 8px; }
       .hd-date     { font-size: 0.8rem; }
@@ -520,6 +540,10 @@
     </div>
   </div>
   <div class="hd-right">
+    <div class="mode-switch" title="受付モード">
+      <button class="ms-btn active" id="msMonthly" onclick="setReceptionMode('monthly')">月謝</button>
+      <button class="ms-btn"        id="msTicket"  onclick="setReceptionMode('ticket')">回数券</button>
+    </div>
     <div class="hd-time">
       <div class="hd-date"  id="hdDate">---</div>
       <div class="hd-clock" id="hdClock">--:--</div>
@@ -635,6 +659,7 @@
   <p class="ov-label ok" id="ovLabel">受付完了</p>
   <p class="ov-name"     id="ovName"></p>
   <p class="ov-meta"     id="ovMeta"></p>
+  <p class="ov-ticket"   id="ovTicket"></p>
   <p class="ov-welcome"  id="ovWelcome">ご来校ありがとうございます！</p>
   <p class="ov-sub"      id="ovSub">記録中…</p>
   <p class="ov-hint">タップで閉じる</p>
@@ -654,9 +679,44 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.07.10-r42';
+  const VERSION     = '2026.07.10-r43';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
+  const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
+
+  // ── 受付モード（月謝 / 回数券） ─────────────────────
+  let receptionMode = localStorage.getItem('sop_reception_mode') || 'monthly';
+  function setReceptionMode(mode) {
+    receptionMode = mode;
+    localStorage.setItem('sop_reception_mode', mode);
+    document.getElementById('msMonthly').classList.toggle('active', mode === 'monthly');
+    document.getElementById('msTicket').classList.toggle('active',  mode === 'ticket');
+    document.body.classList.toggle('ticket-mode', mode === 'ticket');
+  }
+
+  // 回数券：pending消費ログを送信し、残回数をオーバーレイに表示
+  async function logTicketScan(memberId, fullName) {
+    const el = document.getElementById('ovTicket');
+    try {
+      const res = await fetch(TICKET_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'scan', member_id: memberId, member_name: fullName, class_label: '回数券クラス' })
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message);
+      if (result.remaining > 0) {
+        el.className = 'ov-ticket ok';
+        el.textContent = '🎫 回数券 残り ' + result.remaining + ' 回';
+      } else {
+        el.className = 'ov-ticket warn';
+        el.textContent = '⚠ 回数券の残りがありません（要購入）';
+      }
+    } catch (_) {
+      el.className = 'ov-ticket warn';
+      el.textContent = '⚠ 回数券情報を取得できませんでした';
+    }
+  }
   const OVERLAY_SEC = 2;
 
   document.getElementById('versionFooter').textContent = 'v' + VERSION;
@@ -1085,6 +1145,7 @@
     document.getElementById('ovMeta').textContent      = meta || '';
     document.getElementById('ovWelcome').style.display = type === 'ok' ? '' : 'none';
     document.getElementById('ovSub').textContent       = '記録中…';
+    document.getElementById('ovTicket').className      = 'ov-ticket'; // 一旦隠す（回数券モード時のみ表示）
 
     icon.style.animation = 'none'; void icon.offsetWidth; icon.style.animation = '';
 
@@ -1130,8 +1191,11 @@
 
     showOverlay({ name: fullName, meta: '会員番号：' + memberId, type: 'ok' });
 
+    // 回数券モード：pending消費ログを送信（残回数もオーバーレイに表示）
+    if (receptionMode === 'ticket') logTicketScan(memberId, fullName);
+
     try {
-      await submitAttendance(memberId, fullName, note);
+      await submitAttendance(memberId, fullName, note + (receptionMode === 'ticket' ? '・回数券' : ''));
       document.getElementById('ovSub').textContent = '✓ 記録完了';
     } catch (err) {
       document.getElementById('ovSub').textContent = '⚠ 記録に失敗しました';
@@ -1209,6 +1273,7 @@
   // ── 起動 ─────────────────────────────────────────────
   warmupMembers();
   document.body.classList.add('mode-qr');
+  setReceptionMode(receptionMode); // 前回の受付モード（月謝/回数券）を復元
   if (IS_IPAD) {
     // iPad：インカメラ初期設定・キーボード生成・ネイティブキーボード抑制
     facingMode = 'user';
