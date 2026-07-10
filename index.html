@@ -654,7 +654,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.06.12-r41';
+  const VERSION     = '2026.07.10-r42';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const OVERLAY_SEC = 2;
@@ -1014,10 +1014,17 @@
   }
 
   // ── QR解析 ──────────────────────────────────────────
+  // 対応フォーマット：
+  //   1. 旧会員証: Googleフォーム等のURL末尾 /r/XXXXXX
+  //   2. 新会員証: sop:XXXXXX（2026年8月〜）
+  //   3. 生の6桁数字
   function extractMemberId(text) {
-    const m = text.match(/\/r\/(\d{6})\/?$/);
-    if (m) return m[1];
-    if (/^\d{6}$/.test(text.trim())) return text.trim();
+    const t = text.trim();
+    const sop = t.match(/^sop:(\d{6})$/i);   // 新フォーマット sop:123456
+    if (sop) return sop[1];
+    const url = t.match(/\/r\/(\d{6})\/?$/); // 旧フォーマット（URL埋め込み）
+    if (url) return url[1];
+    if (/^\d{6}$/.test(t)) return t;
     return null;
   }
 
