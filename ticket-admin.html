@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f13">
+<title>回数券 管理 | S.O.P. Dance School</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: #0f0f13; color: #f0f0f0; min-height: 100dvh;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid #1e1e2e;
+  }
+  .hd-school { font-size: 0.6rem; letter-spacing: 0.15em; color: #5050a0; text-transform: uppercase; }
+  .hd-title  { font-size: 1.05rem; font-weight: 700; color: #c0c0e0; margin-top: 2px; }
+  #btnReload {
+    background: #1a1a24; border: 1px solid #3a3a5a; border-radius: 8px;
+    color: #a0a0c0; font-size: 0.85rem; padding: 8px 14px; cursor: pointer; font-family: inherit;
+  }
+  #btnReload:active { background: #2a2a4a; }
+
+  .tabs { display: flex; border-bottom: 1px solid #1e1e2e; }
+  .tab {
+    flex: 1; padding: 14px 6px; font-size: 0.9rem; font-weight: 700; text-align: center;
+    color: #5050a0; background: none; border: none; border-bottom: 3px solid transparent;
+    cursor: pointer; font-family: inherit;
+  }
+  .tab.active { color: #7c6fff; border-bottom-color: #7c6fff; background: #15151f; }
+  .tab .badge {
+    display: inline-block; min-width: 20px; padding: 1px 6px; margin-left: 4px;
+    background: #7c6fff; color: #fff; border-radius: 10px; font-size: 0.72rem;
+  }
+
+  .main { max-width: 760px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .pane { display: none; flex-direction: column; gap: 12px; }
+  .pane.active { display: flex; }
+
+  .card {
+    background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 12px; padding: 14px 16px;
+  }
+  .muted { color: #5050a0; font-size: 0.8rem; }
+  .msg { text-align: center; color: #404060; padding: 24px 0; font-size: 0.9rem; }
+
+  /* ── 認証 ── */
+  #authPane input {
+    width: 100%; background: #14141c; border: 2px solid #2a2a3a; border-radius: 10px;
+    padding: 13px 15px; color: #e0e0f0; font-size: 1rem; font-family: inherit; margin-top: 8px;
+  }
+  #authPane input:focus { outline: none; border-color: #7c6fff; }
+  .btn {
+    background: #7c6fff; border: none; border-radius: 10px; color: #fff;
+    font-size: 0.95rem; font-weight: 700; padding: 13px 18px; cursor: pointer; font-family: inherit;
+  }
+  .btn:disabled { opacity: 0.35; }
+  .btn:not(:disabled):active { opacity: 0.8; }
+  .btn.gray { background: none; border: 1px solid #3a3a5a; color: #8080b0; }
+  .btn.green { background: #2fa46a; }
+  .btn.red   { background: #a4432f; }
+
+  /* ── pending一覧 ── */
+  .plog {
+    display: flex; align-items: center; gap: 12px;
+    background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 12px; padding: 12px 14px;
+  }
+  .plog input[type=checkbox] { width: 22px; height: 22px; accent-color: #7c6fff; flex-shrink: 0; }
+  .plog .p-name { font-size: 1rem; font-weight: 700; color: #e0e0f0; }
+  .plog .p-meta { font-size: 0.75rem; color: #6060a0; margin-top: 2px; }
+  .plog .p-bal  { margin-left: auto; font-size: 0.85rem; font-weight: 700; flex-shrink: 0; }
+  .p-bal.ok   { color: #5fd08a; }
+  .p-bal.zero { color: #e0a060; }
+  .actions { display: flex; gap: 10px; position: sticky; bottom: 12px; }
+  .actions .btn { flex: 1; }
+
+  /* ── 券追加 ── */
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .field label { font-size: 0.75rem; color: #5050a0; font-weight: 600; }
+  .field input, .field select {
+    background: #14141c; border: 2px solid #2a2a3a; border-radius: 10px;
+    padding: 12px 14px; color: #e0e0f0; font-size: 1rem; font-family: inherit; width: 100%;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: #7c6fff; }
+  .sresult {
+    background: #14141c; border: 1px solid #2a2a3a; border-radius: 10px;
+    padding: 11px 13px; cursor: pointer; margin-top: 6px;
+  }
+  .sresult:active { border-color: #7c6fff; }
+  .sresult .s-name { font-weight: 700; }
+  .sresult .s-id { font-size: 0.75rem; color: #6060a0; }
+  .selected-member {
+    background: #12301f; border: 1px solid #1f5c38; border-radius: 10px; padding: 12px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  /* ── 残高一覧 ── */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 8px; text-align: left; font-size: 0.88rem; border-bottom: 1px solid #1e1e2e; }
+  th { color: #5050a0; font-size: 0.72rem; letter-spacing: 0.05em; }
+  td.num { font-weight: 700; color: #5fd08a; }
+  td.num.zero { color: #404060; }
+
+  footer { text-align: center; font-size: 0.65rem; color: #252540; padding: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="hd-school">S.O.P. Dance School</div>
+    <div class="hd-title">🎫 回数券 管理</div>
+  </div>
+  <button id="btnReload" onclick="loadAll()">↺ 更新</button>
+</header>
+
+<div class="tabs" id="tabs" style="display:none;">
+  <button class="tab active" id="tabPending" onclick="switchTab('pending')">未確定<span class="badge" id="pendingBadge">0</span></button>
+  <button class="tab" id="tabAdd"     onclick="switchTab('add')">券を追加</button>
+  <button class="tab" id="tabBalance" onclick="switchTab('balance')">残高一覧</button>
+</div>
+
+<div class="main">
+
+  <!-- 認証 -->
+  <div class="pane active" id="authPane">
+    <div class="card">
+      <div class="muted">スタッフキーを入力してください（初回のみ）</div>
+      <input type="password" id="keyInput" placeholder="スタッフキー" autocomplete="off">
+      <div style="margin-top:12px;"><button class="btn" style="width:100%;" onclick="saveKey()">ログイン</button></div>
+    </div>
+  </div>
+
+  <!-- 未確定 -->
+  <div class="pane" id="pendingPane">
+    <div class="muted" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>スキャン済み・未確定の消費ログ</span>
+      <button class="btn gray" style="padding:7px 12px;font-size:0.8rem;" onclick="toggleAll()">全選択/解除</button>
+    </div>
+    <div id="pendingList"><p class="msg">読み込み中…</p></div>
+    <div class="actions" id="pendingActions" style="display:none;">
+      <button class="btn green" onclick="confirmSelected()">✓ 選択を確定（残−1）</button>
+      <button class="btn red"   onclick="cancelSelected()">✕ 選択を取消</button>
+    </div>
+  </div>
+
+  <!-- 券追加 -->
+  <div class="pane" id="addPane">
+    <div class="card">
+      <div class="field">
+        <label>会員検索（ふりがな）</label>
+        <input id="searchInput" placeholder="例：こやま" oninput="onSearch()" autocomplete="off">
+        <div id="searchResults"></div>
+      </div>
+      <div id="selectedBox" style="display:none;" class="selected-member">
+        <div>
+          <div class="s-name" id="selName"></div>
+          <div class="s-id" id="selId"></div>
+        </div>
+        <button class="btn gray" style="padding:7px 12px;font-size:0.8rem;" onclick="clearSelected()">選び直す</button>
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <label>セット数（1セット = 4回 2,500円）</label>
+        <select id="setsSelect">
+          <option value="1">1セット（4回）</option>
+          <option value="2">2セット（8回）</option>
+          <option value="3">3セット（12回）</option>
+          <option value="4">4セット（16回）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>メモ（任意）</label>
+        <input id="noteInput" placeholder="エアレジ現金 など" autocomplete="off">
+      </div>
+      <button class="btn" style="width:100%;" id="btnAdd" onclick="addBook()" disabled>券を追加する</button>
+      <p class="msg" id="addStatus" style="padding:12px 0 0;"></p>
+    </div>
+  </div>
+
+  <!-- 残高一覧 -->
+  <div class="pane" id="balancePane">
+    <div class="card" style="padding:6px 16px;">
+      <table>
+        <thead><tr><th>会員</th><th>残回数</th><th>累計購入</th><th>最終購入</th></tr></thead>
+        <tbody id="balanceBody"><tr><td colspan="4" class="msg">読み込み中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer id="verFooter"></footer>
+
+<script>
+const API         = 'https://sop-dance.com/member/api/ticket.php';
+const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
+const VERSION     = '2026.07.10-a1';
+document.getElementById('verFooter').textContent = 'v' + VERSION;
+
+let KEY = localStorage.getItem('sop_ticket_key') || '';
+let memberCache = null;
+let currentTab = 'pending';
+
+// ── 認証 ─────────────────────────────────────────────
+function saveKey() {
+  KEY = document.getElementById('keyInput').value.trim();
+  if (!KEY) return;
+  localStorage.setItem('sop_ticket_key', KEY);
+  boot();
+}
+
+async function boot() {
+  // キーの有効性チェックを兼ねてpendingを取得
+  try {
+    const res = await fetch(API + '?action=pending&key=' + encodeURIComponent(KEY));
+    const data = await res.json();
+    if (!data.success) throw new Error();
+    document.getElementById('authPane').classList.remove('active');
+    document.getElementById('tabs').style.display = 'flex';
+    switchTab('pending');
+    renderPending(data.logs);
+    warmMembers();
+  } catch (_) {
+    localStorage.removeItem('sop_ticket_key');
+    document.getElementById('authPane').classList.add('active');
+    alert('キーが正しくありません');
+  }
+}
+
+async function warmMembers() {
+  try {
+    const res = await fetch(MEMBERS_API);
+    const data = await res.json();
+    if (data.success) memberCache = data.members;
+  } catch (_) {}
+}
+
+// ── タブ ─────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  ['pending','add','balance'].forEach(t => {
+    document.getElementById('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    document.getElementById(t + 'Pane').classList.toggle('active', t === tab);
+  });
+  if (tab === 'pending') loadPending();
+  if (tab === 'balance') loadBalance();
+}
+
+function loadAll() { if (currentTab === 'pending') loadPending(); if (currentTab === 'balance') loadBalance(); }
+
+// ── 未確定一覧 ───────────────────────────────────────
+async function loadPending() {
+  try {
+    const res = await fetch(API + '?action=pending&key=' + encodeURIComponent(KEY));
+    const data = await res.json();
+    if (data.success) renderPending(data.logs);
+  } catch (_) {}
+}
+
+function renderPending(logs) {
+  const el = document.getElementById('pendingList');
+  document.getElementById('pendingBadge').textContent = logs.length;
+  document.getElementById('pendingActions').style.display = logs.length ? 'flex' : 'none';
+  if (!logs.length) { el.innerHTML = '<p class="msg">未確定のログはありません</p>'; return; }
+  el.innerHTML = logs.map(l => `
+    <label class="plog">
+      <input type="checkbox" value="${l.id}">
+      <div>
+        <div class="p-name">${l.member_name || '（名前なし）'}</div>
+        <div class="p-meta">${l.member_id}　${l.scanned_at}</div>
+      </div>
+      <div class="p-bal ${l.remaining > 0 ? 'ok' : 'zero'}">${l.remaining > 0 ? '残 ' + l.remaining : '残なし⚠'}</div>
+    </label>`).join('');
+}
+
+function selectedIds() {
+  return [...document.querySelectorAll('#pendingList input:checked')].map(c => parseInt(c.value));
+}
+function toggleAll() {
+  const boxes = [...document.querySelectorAll('#pendingList input[type=checkbox]')];
+  const allOn = boxes.every(b => b.checked);
+  boxes.forEach(b => b.checked = !allOn);
+}
+
+async function confirmSelected() {
+  const ids = selectedIds();
+  if (!ids.length) { alert('確定するログを選択してください'); return; }
+  if (!confirm(ids.length + '件を確定します（残回数−1）。よろしいですか？')) return;
+  const res = await fetch(API, { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'confirm', log_ids: ids, staff: 'staff', key: KEY }) });
+  const data = await res.json();
+  if (data.success) {
+    let msg = data.confirmed + '件を確定しました';
+    if (data.no_balance && data.no_balance.length) msg += '\n⚠ 残なしのためスキップ: ' + data.no_balance.join(', ');
+    alert(msg);
+  } else alert('エラー: ' + data.message);
+  loadPending();
+}
+
+async function cancelSelected() {
+  const ids = selectedIds();
+  if (!ids.length) { alert('取消するログを選択してください'); return; }
+  if (!confirm(ids.length + '件を取消します（消費されません）。よろしいですか？')) return;
+  const res = await fetch(API, { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'cancel', log_ids: ids, key: KEY }) });
+  const data = await res.json();
+  if (!data.success) alert('エラー: ' + data.message);
+  loadPending();
+}
+
+// ── 券追加 ───────────────────────────────────────────
+let selectedMember = null;
+
+function toHira(s){ return s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0)-0x60)); }
+function norm(s){ return toHira(String(s).replace(/　/g,' ').replace(/\s+/g,' ').trim().toLowerCase()); }
+
+function onSearch() {
+  const q = norm(document.getElementById('searchInput').value);
+  const el = document.getElementById('searchResults');
+  if (!q || !memberCache) { el.innerHTML = ''; return; }
+  const hits = [];
+  for (const [id, m] of Object.entries(memberCache)) {
+    const fields = Object.entries(m)
+      .filter(([k,v]) => typeof v === 'string' && v && !(k.toLowerCase().startsWith('first') || k.toLowerCase().startsWith('mei')))
+      .map(([,v]) => norm(v));
+    if (q.split(' ').every(t => fields.some(f => f.startsWith(t)))) hits.push([id, m]);
+    if (hits.length >= 6) break;
+  }
+  el.innerHTML = hits.map(([id,m]) => `
+    <div class="sresult" onclick="selectMember('${id}')">
+      <div class="s-name">${m.lastName||''}　${m.firstName||''}</div>
+      <div class="s-id">会員番号：${id}</div>
+    </div>`).join('');
+}
+
+function selectMember(id) {
+  const m = memberCache[id];
+  selectedMember = id;
+  document.getElementById('selName').textContent = (m.lastName||'') + '　' + (m.firstName||'');
+  document.getElementById('selId').textContent = '会員番号：' + id;
+  document.getElementById('selectedBox').style.display = 'flex';
+  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('btnAdd').disabled = false;
+}
+function clearSelected() {
+  selectedMember = null;
+  document.getElementById('selectedBox').style.display = 'none';
+  document.getElementById('btnAdd').disabled = true;
+}
+
+async function addBook() {
+  if (!selectedMember) return;
+  const sets = parseInt(document.getElementById('setsSelect').value);
+  const name = document.getElementById('selName').textContent;
+  if (!confirm(name + ' さんに ' + sets + 'セット（' + sets*4 + '回・' + (sets*2500).toLocaleString() + '円）を追加します。よろしいですか？')) return;
+  const res = await fetch(API, { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'add_book', member_id: selectedMember, sets,
+      source:'manual', note: document.getElementById('noteInput').value.trim(), key: KEY }) });
+  const data = await res.json();
+  const st = document.getElementById('addStatus');
+  if (data.success) {
+    st.textContent = '✅ 追加しました（' + name + '：残 ' + data.remaining + ' 回）';
+    st.style.color = '#5fd08a';
+    clearSelected();
+    document.getElementById('noteInput').value = '';
+  } else {
+    st.textContent = '❌ ' + data.message;
+    st.style.color = '#d06060';
+  }
+}
+
+// ── 残高一覧 ─────────────────────────────────────────
+async function loadBalance() {
+  const body = document.getElementById('balanceBody');
+  try {
+    const res = await fetch(API + '?action=summary&key=' + encodeURIComponent(KEY));
+    const data = await res.json();
+    if (!data.success) throw new Error();
+    if (!data.members.length) { body.innerHTML = '<tr><td colspan="4" class="msg">データがありません</td></tr>'; return; }
+    body.innerHTML = data.members.map(m => {
+      const mem = memberCache && memberCache[m.member_id];
+      const name = mem ? (mem.lastName||'') + '　' + (mem.firstName||'') : m.member_id;
+      return `<tr>
+        <td>${name}<div style="font-size:0.7rem;color:#404060;">${m.member_id}</div></td>
+        <td class="num ${m.remaining>0?'':'zero'}">${m.remaining} 回</td>
+        <td>${m.total} 回</td>
+        <td style="font-size:0.78rem;color:#6060a0;">${(m.last_purchase||'').slice(0,10)}</td>
+      </tr>`;
+    }).join('');
+  } catch (_) {
+    body.innerHTML = '<tr><td colspan="4" class="msg">読み込みに失敗しました</td></tr>';
+  }
+}
+
+// ── 起動 ─────────────────────────────────────────────
+if (KEY) boot();
+</script>
+</body>
+</html>
