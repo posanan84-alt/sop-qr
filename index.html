@@ -56,9 +56,14 @@
       transition: background 0.15s, color 0.15s;
     }
     .ms-btn.active { background: #7c6fff; color: #fff; }
-    /* 回数券モード中はヘッダー全体をうっすら緑系にして気付けるように */
-    body.ticket-mode header { border-bottom-color: #2a5a3a; }
-    body.ticket-mode .ms-btn.active { background: #2fa46a; }
+    /* 回数券モード中は背景をブルー系にして一目で分かるように */
+    body.ticket-mode { background: #0c1a30; }
+    body.ticket-mode header        { border-bottom-color: #1e3a5e; }
+    body.ticket-mode .mode-tabs    { border-bottom-color: #1e3a5e; }
+    body.ticket-mode .ms-btn.active { background: #2f7ad0; }
+    body.ticket-mode .camera-wrap,
+    body.ticket-mode .history-panel { background: #14243c; border-color: #24405e; }
+    body.ticket-mode .hd-clock      { color: #5aa2e8; }
 
     /* ── モードタブ ── */
     .mode-tabs {
@@ -679,7 +684,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.07.10-r43';
+  const VERSION     = '2026.07.11-r44';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
