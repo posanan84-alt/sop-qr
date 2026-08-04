@@ -56,6 +56,12 @@
       transition: background 0.15s, color 0.15s;
     }
     .ms-btn.active { background: #7c6fff; color: #fff; }
+    /* 回数券の窓口対応（引き継ぎ・チャージ）へ。目立ちすぎないよう小さく */
+    .hd-ticket-link {
+      color: #5aa2e8; font-size: 0.72rem; text-decoration: none; white-space: nowrap;
+      border: 1px solid #24405e; border-radius: 6px; padding: 6px 9px; opacity: .85;
+    }
+    .hd-ticket-link:hover { opacity: 1; background: #14243c; }
     /* 回数券モード中は背景をブルー系にして一目で分かるように */
     body.ticket-mode { background: #0c1a30; }
     body.ticket-mode header        { border-bottom-color: #1e3a5e; }
@@ -549,6 +555,8 @@
       <button class="ms-btn active" id="msMonthly" onclick="setReceptionMode('monthly')">月謝</button>
       <button class="ms-btn"        id="msTicket"  onclick="setReceptionMode('ticket')">回数券</button>
     </div>
+    <!-- 紙チケットの引き継ぎ・窓口チャージ。直前に読み取った会員がいればその人で開く -->
+    <a class="hd-ticket-link" id="ticketDeskLink" href="/member/tickets/" title="紙チケットの引き継ぎ・回数の追加">🎫 回数券の追加</a>
     <div class="hd-time">
       <div class="hd-date"  id="hdDate">---</div>
       <div class="hd-clock" id="hdClock">--:--</div>
@@ -684,7 +692,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.07.11-r44';
+  const VERSION     = '2026.07.11-r45';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
@@ -948,12 +956,19 @@
     return toHira(str.replace(/　/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase());
   }
 
+  // 「カードを忘れた方」の手入力検索に出してよい会員か（在籍中のみ）
+  // 休会・退会・卒業会員は対象外。QRスキャン側の受付処理には影響しない。
+  function isActiveMember(m) {
+    return m.status2 === '在籍';
+  }
+
   function searchMembers(query) {
     if (!memberCache || !query.trim()) return [];
     const terms = normStr(query).split(' ').filter(t => t.length > 0);
     if (!terms.length) return [];
     const results = [];
     for (const [id, m] of Object.entries(memberCache)) {
+      if (!isActiveMember(m)) continue;
       // 「名（first name）」系フィールドを除外し、姓・姓かな・フルかな等のみ対象にする
       const fields = Object.entries(m)
         .filter(([key, val]) => {
@@ -982,10 +997,10 @@
     });
   }
 
-  // 全会員（ふりがな順）
+  // 全会員（在籍中のみ・ふりがな順）
   function allMembersSorted() {
     if (!memberCache) return [];
-    return sortByKana(Object.entries(memberCache));
+    return sortByKana(Object.entries(memberCache).filter(([, m]) => isActiveMember(m)));
   }
 
   // デバッグ: 会員データ構造を確認する関数（コンソールから呼べます）
@@ -1198,6 +1213,9 @@
 
     // 回数券モード：pending消費ログを送信（残回数もオーバーレイに表示）
     if (receptionMode === 'ticket') logTicketScan(memberId, fullName);
+    // 直前に読み取った人を窓口対応画面へ引き継ぐ（リンクを押すとその人が選ばれた状態で開く）
+    const deskLink = document.getElementById('ticketDeskLink');
+    if (deskLink) deskLink.href = '/member/tickets/?member_id=' + encodeURIComponent(memberId);
 
     try {
       await submitAttendance(memberId, fullName, note + (receptionMode === 'ticket' ? '・回数券' : ''));
