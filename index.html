@@ -367,6 +367,7 @@
       font-size: 1.05rem; font-weight: 700; text-align: center; }
     .ov-ticket.ok   { display: block; background: #12301f; color: #5fd08a; border: 1px solid #1f5c38; }
     .ov-ticket.warn { display: block; background: #33200f; color: #e0a060; border: 1px solid #5c3c1f; }
+    .ov-ticket.info { display: block; background: #14243c; color: #5aa2e8; border: 1px solid #24405e; }
     .ov-welcome { margin-top: 16px; font-size: clamp(1rem, 4vw, 1.4rem); font-weight: 700; color: #c0f0d0; text-align: center; }
     .ov-sub { margin-top: 8px; font-size: 0.78rem; color: #404060; text-align: center; min-height: 1.2em; }
     .ov-hint { margin-top: 24px; font-size: 0.7rem; color: #303050; }
@@ -692,7 +693,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.07.11-r45';
+  const VERSION     = '2026.08.04-r46';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
@@ -718,6 +719,12 @@
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.message);
+      // 試験運用中は残数を出さない（まだ回数を配っていないため）
+      if (result.trial) {
+        el.className = 'ov-ticket info';
+        el.textContent = '🎫 デジタル回数券は準備中です';
+        return;
+      }
       if (result.remaining > 0) {
         el.className = 'ov-ticket ok';
         el.textContent = '🎫 回数券 残り ' + result.remaining + ' 回';

@@ -1,0 +1,5 @@
+# 公開リポジトリなので、手元用のメモや作業ファイルは上げない
+github-setup-info.txt
+.claude/
+.DS_Store
+*.log
