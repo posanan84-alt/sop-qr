@@ -56,6 +56,13 @@
       transition: background 0.15s, color 0.15s;
     }
     .ms-btn.active { background: #7c6fff; color: #fff; }
+    /* 手動で選んでいる間だけ出る目印。押すと自動に戻る */
+    .mode-badge {
+      background: #33200f; border: 1px solid #5c3c1f; border-radius: 8px;
+      color: #e0a060; font-size: 0.68rem; font-weight: 700; font-family: inherit;
+      padding: 6px 9px; cursor: pointer; white-space: nowrap;
+    }
+    .mode-badge:active { background: #4a2f16; }
     /* 回数券の窓口対応（引き継ぎ・チャージ）へ。目立ちすぎないよう小さく */
     .hd-ticket-link {
       color: #5aa2e8; font-size: 0.72rem; text-decoration: none; white-space: nowrap;
@@ -562,10 +569,13 @@
     </div>
   </div>
   <div class="hd-right">
-    <div class="mode-switch" title="受付モード">
+    <div class="mode-switch" title="受付モード（時間割から自動で切り替わります）">
       <button class="ms-btn active" id="msMonthly" onclick="setReceptionMode('monthly')">月謝</button>
       <button class="ms-btn"        id="msTicket"  onclick="setReceptionMode('ticket')">回数券</button>
     </div>
+    <!-- 手で選んでいる間だけ出る。押すと時間割に合わせた自動へ戻る -->
+    <button class="mode-badge" id="modeBadge" style="display:none" onclick="backToAuto()"
+            title="時間割に合わせた自動切替に戻す">手動 ⟲</button>
     <!-- 紙チケットの引き継ぎ・窓口チャージ。直前に読み取った会員がいればその人で開く -->
     <a class="hd-ticket-link" id="ticketDeskLink" href="/member/tickets/" title="紙チケットの引き継ぎ・回数の追加">🎫 回数券の追加</a>
     <div class="hd-time">
@@ -703,19 +713,90 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.08.21-r47';
+  const VERSION     = '2026.08.21-r48';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
+  const CLASSES_API = 'https://sop-dance.com/member/api/classes.php';
 
   // ── 受付モード（月謝 / 回数券） ─────────────────────
+  // 時間割から自動で切り替える。手で選んだときは、次にクラスが変わるまでその選択を優先する。
+  const LEAD_MIN  = 20;   // レッスン開始の何分前から切り替えるか
+  const AFTER_MIN = 30;   // 開始から何分後まで、そのクラスの受付とみなすか
+
   let receptionMode = localStorage.getItem('sop_reception_mode') || 'monthly';
-  function setReceptionMode(mode) {
+  let classList     = null;   // 時間割（classes.php から取得）
+  let autoMode      = null;   // いまの時間割から決まるモード
+  let manualUntil   = null;   // 手動で選んだときの「解除の目印」＝そのときの自動モード
+
+  function setReceptionMode(mode, opts) {
+    const byUser = !opts || opts.byUser !== false;   // 既定は「人が押した」
     receptionMode = mode;
     localStorage.setItem('sop_reception_mode', mode);
     document.getElementById('msMonthly').classList.toggle('active', mode === 'monthly');
     document.getElementById('msTicket').classList.toggle('active',  mode === 'ticket');
     document.body.classList.toggle('ticket-mode', mode === 'ticket');
+    if (byUser) {
+      // 押した時点の自動モードを覚えておき、それが変わったら自動に戻す
+      manualUntil = autoMode;
+      localStorage.setItem('sop_mode_manual_from', autoMode || '');
+    }
+    renderModeBadge();
+  }
+
+  // 手動になっているかを小さく示す。タップで自動へ戻す
+  function renderModeBadge() {
+    const el = document.getElementById('modeBadge');
+    if (!el) return;
+    const manual = manualUntil !== null && receptionMode !== autoMode;
+    el.style.display = manual ? '' : 'none';
+  }
+
+  function backToAuto() {
+    manualUntil = null;
+    localStorage.removeItem('sop_mode_manual_from');
+    applyAutoMode(true);
+  }
+
+  // 時間割を読む（起動時と、30分ごと）
+  async function loadClasses() {
+    try {
+      const res = await fetch(CLASSES_API);
+      const data = await res.json();
+      if (data.success) classList = data.classes;
+    } catch (_) { /* 取れなければ手動運用のまま */ }
+    applyAutoMode();
+  }
+
+  // いまの時刻に該当するクラスから、あるべきモードを決める。
+  // 開始20分前〜開始30分後を「そのクラスの受付中」とみなし、
+  // 回数券クラスと月謝クラスが重なる時間帯（木19:10など）は回数券を優先する
+  //（月謝の生徒を回数券モードで読んでも、回数券の行は出ないため実害がない）。
+  function computeAutoMode(now) {
+    if (!classList || !classList.length) return null;
+    const wd  = ['sun','mon','tue','wed','thu','fri','sat'][now.getDay()];
+    const min = now.getHours() * 60 + now.getMinutes();
+    let found = null;
+    for (const c of classList) {
+      if (c.weekday !== wd) continue;
+      if (min < c.start - LEAD_MIN || min > c.start + AFTER_MIN) continue;
+      if (c.ticket) return 'ticket';    // 回数券クラスが1つでもあれば回数券
+      found = 'monthly';
+    }
+    return found;                        // 該当なしは null＝いまのモードを保つ
+  }
+
+  function applyAutoMode(force) {
+    const next = computeAutoMode(new Date());
+    if (next === null) { renderModeBadge(); return; }   // 対象のクラスが無い時間帯は変えない
+    const changed = next !== autoMode;
+    autoMode = next;
+    // 手動で選んでいる間は変えない。ただし自動モードが変わったら（＝次のクラスに移ったら）自動に戻す
+    if (!force && manualUntil !== null && !changed) { renderModeBadge(); return; }
+    manualUntil = null;
+    localStorage.removeItem('sop_mode_manual_from');
+    if (receptionMode !== next) setReceptionMode(next, { byUser: false });
+    else renderModeBadge();
   }
 
   // 回数券：残数をオーバーレイに表示する（読み取りだけ。消費は出欠管理のクラス確定で行う）
@@ -735,7 +816,13 @@
         el.textContent = '🎫 デジタル回数券は準備中です';
         return;
       }
-      // デジタルを受け取っていない人（月謝・紙チケットのみ）に「残りがありません」は事実と違う
+      // 月謝だけの生徒には回数券の行を出さない（自動切替で回数券モードのまま読むことがある）
+      if (!result.is_ticket_member) {
+        el.className = 'ov-ticket';
+        el.textContent = '';
+        return;
+      }
+      // デジタルを受け取っていない人（紙チケットのみ）に「残りがありません」は事実と違う
       if (!result.has_digital) {
         el.className = 'ov-ticket info';
         el.textContent = '🎫 紙のチケットをご利用中です';
@@ -1328,7 +1415,11 @@
   // ── 起動 ─────────────────────────────────────────────
   warmupMembers();
   document.body.classList.add('mode-qr');
-  setReceptionMode(receptionMode); // 前回の受付モード（月謝/回数券）を復元
+  // 受付モードは時間割から自動で切り替える。前回の選択はつなぎとして復元しておく
+  setReceptionMode(receptionMode, { byUser: false });
+  loadClasses();                            // 時間割を読んで即反映
+  setInterval(applyAutoMode, 30 * 1000);    // 30秒ごとに時刻を見て切り替え
+  setInterval(loadClasses, 30 * 60 * 1000); // 30分ごとに時間割を読み直す（変更に追従）
   if (IS_IPAD) {
     // iPad：インカメラ初期設定・キーボード生成・ネイティブキーボード抑制
     facingMode = 'user';
