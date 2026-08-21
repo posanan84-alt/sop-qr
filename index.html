@@ -713,7 +713,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.08.21-r48';
+  const VERSION     = '2026.08.21-r49';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
@@ -1330,11 +1330,11 @@
 
     showOverlay({ name: fullName, meta: '会員番号：' + memberId, type: 'ok' });
 
-    // 回数券モード：pending消費ログを送信（残回数もオーバーレイに表示）
+    // 回数券モード：残回数をオーバーレイに表示（読み取りのみ）
     if (receptionMode === 'ticket') logTicketScan(memberId, fullName);
-    // 直前に読み取った人を窓口対応画面へ引き継ぐ（リンクを押すとその人が選ばれた状態で開く）
-    const deskLink = document.getElementById('ticketDeskLink');
-    if (deskLink) deskLink.href = '/member/tickets/?member_id=' + encodeURIComponent(memberId);
+    // ※ 以前はここで直前に読み取った会員を窓口対応画面へ引き継いでいたが、
+    //   窓口に来る方は会員証を持っていないことが多いので廃止した（2026-08-21）。
+    //   窓口画面は常にふりがな検索から始まる。
 
     try {
       await submitAttendance(memberId, fullName, note + (receptionMode === 'ticket' ? '・回数券' : ''));
