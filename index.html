@@ -713,7 +713,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.08.21-r49';
+  const VERSION     = '2026.08.21-r50';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
@@ -1373,20 +1373,45 @@
   async function startCamera() {
     stopCamera();
     updateMirror();
+    const status = document.getElementById('status');
+    status.className = 'status';
+    status.textContent = 'カメラを起動中…';
     try {
       currentStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode, width: { ideal: 640 }, height: { ideal: 640 } }
       });
       video.srcObject = currentStream;
-      video.addEventListener('loadedmetadata', () => {
-        document.getElementById('status').textContent = '会員証QRをかざしてください';
-        requestAnimationFrame(tick);
-      }, { once: true });
+      video.play().catch(() => {});     // 復帰直後は再生が止まっていることがある
+      // loadedmetadata を待たずに回し始める。
+      // 復帰時は同じvideo要素を使い回すためイベントが飛ばないことがあり、
+      // 待つ作りだと「カメラを起動中…」のまま止まってしまう。
+      frameSeen = false;
+      startTick();
     } catch (err) {
-      document.getElementById('status').textContent = 'カメラにアクセスできません';
-      document.getElementById('status').className = 'status error';
+      status.textContent = 'カメラにアクセスできません';
+      status.className = 'status error';
     }
   }
+
+  // ── 画面に戻ってきたときのカメラ復帰 ────────────────
+  // 「回数券の追加」などへ移動している間にカメラは止められる。
+  // iPadでは戻っても前の画面がそのまま復元され起動処理が動かないので、
+  // 復帰を検知して、止まっていたら入れ直す。
+  function cameraIsDead() {
+    if (!currentStream) return true;
+    return currentStream.getTracks().every(t => t.readyState === 'ended');
+  }
+  function resumeCameraIfNeeded() {
+    if (currentMode !== 'qr') return;      // 手入力中は何もしない
+    if (cameraIsDead()) { startCamera(); return; }
+    video.play().catch(() => {});          // 生きているのに止まっているだけなら再生し直す
+    startTick();                           // 読み取りループも念のため起こす
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) resumeCameraIfNeeded(); });
+  window.addEventListener('pageshow', resumeCameraIfNeeded);   // 「戻る」での復元も拾う
+  window.addEventListener('focus',   resumeCameraIfNeeded);
+  // 念のための自己点検。上のどれも拾えなかった場合でも、5秒ごとに見て自力で戻す
+  setInterval(() => { if (!document.hidden) resumeCameraIfNeeded(); }, 5000);
 
   function flipCamera() {
     facingMode = facingMode === 'environment' ? 'user' : 'environment';
@@ -1394,22 +1419,48 @@
     startCamera();
   }
 
-  function tick() {
-    if (currentMode !== 'qr') return;
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx2d.drawImage(video, 0, 0);
-      const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-      const now = Date.now();
-      if (code && (code.data !== lastScanned || now > cooldownUntil)) {
-        lastScanned   = code.data;
-        cooldownUntil = now + 3000;
-        handleScan(code.data);
-      }
+  // ── 読み取りループ ───────────────────────────────────
+  // 画面が隠れている間は requestAnimationFrame が止まる。戻ったときに
+  // 再開しないことがあり、それがスキャナーの止まる原因になる。
+  // そこで「最後に回った時刻」を持ち、しばらく動いていなければ入れ直す。
+  let tickRunning = false;
+  let frameSeen   = false;   // 最初の映像が届いたか（案内文の切り替えに使う）
+  let lastTickAt  = 0;
+  let tickGen     = 0;       // 世代番号。古いループは静かに終わらせる
+
+  function startTick() {
+    if (tickRunning && Date.now() - lastTickAt < 3000) return;   // ちゃんと回っている
+    tickRunning = true;
+    const gen = ++tickGen;
+    const loop = () => {
+      if (gen !== tickGen) return;                      // 新しいループに引き継いだ
+      if (currentMode !== 'qr') { tickRunning = false; return; }
+      lastTickAt = Date.now();
+      scanFrame();
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+
+  function scanFrame() {
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+    if (!frameSeen) {          // 映像が来た時点で案内を出す（イベントに頼らない）
+      frameSeen = true;
+      const st = document.getElementById('status');
+      st.className = 'status';
+      st.textContent = '会員証QRをかざしてください';
     }
-    requestAnimationFrame(tick);
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx2d.drawImage(video, 0, 0);
+    const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    const now = Date.now();
+    if (code && (code.data !== lastScanned || now > cooldownUntil)) {
+      lastScanned   = code.data;
+      cooldownUntil = now + 3000;
+      handleScan(code.data);
+    }
   }
 
   // ── 起動 ─────────────────────────────────────────────
