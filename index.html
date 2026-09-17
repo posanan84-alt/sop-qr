@@ -586,6 +586,56 @@
       .ov-sub     { font-size: 0.9rem; margin-top: 10px; }
       .ov-hint    { margin-top: 32px; font-size: 0.8rem; }
     }
+
+    /* ── テストモード（URLに ?test=1）──────────────────────────
+       会員証がどう読み取られるかを確認するだけ。受付は一切記録しない。
+       通常の受付URLからは入れないので、受付中に誤ってテストになることはない */
+    #testBanner, #testPanel { display: none; }
+    body.test-mode { background: #0f0f13 !important; }
+    body.test-mode #testBanner {
+      display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+      width: 100%; padding: 10px 16px; background: #3a2a05; color: #ffcf6b;
+      border-bottom: 2px solid #f0a020; font-weight: 700; font-size: 0.95rem; text-align: center;
+    }
+    #testBanner a {
+      color: #1a1100; background: #f0a020; border-radius: 8px; padding: 6px 12px;
+      text-decoration: none; font-size: 0.85rem; white-space: nowrap;
+    }
+    body.test-mode .mode-tabs,
+    body.test-mode .history-panel,
+    body.test-mode .counter,
+    body.test-mode .mode-switch,
+    body.test-mode #modeBadge,
+    body.test-mode #ticketDeskLink { display: none !important; }
+    body.test-mode .camera-wrap { border-color: #f0a020 !important; }
+    body.test-mode #testPanel { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 520px; }
+    .tp-card    { background: #17140c; border: 2px solid #4a3a14; border-radius: 14px; padding: 14px 16px; }
+    .tp-verdict { font-size: 1.15rem; font-weight: 800; margin-bottom: 8px; }
+    .tp-verdict.ok   { color: #5fd08a; }
+    .tp-verdict.warn { color: #f0a020; }
+    .tp-verdict.ng   { color: #ff6b6b; }
+    .tp-name    { font-size: 1.5rem; font-weight: 800; color: #fff; line-height: 1.3; }
+    .tp-kana    { color: #c8b890; margin-bottom: 6px; }
+    .tp-row     { display: flex; gap: 10px; padding: 5px 0; border-top: 1px solid #2a2418; font-size: 0.92rem; }
+    .tp-k       { flex: 0 0 7em; color: #a89060; }
+    .tp-v       { flex: 1; color: #f0e6d0; word-break: break-all; }
+    .tp-v.mono  { font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; }
+    .tp-empty   { color: #8a7a55; text-align: center; padding: 16px 0; }
+    .tp-log-head { display: flex; justify-content: space-between; align-items: center;
+                   color: #a89060; font-size: 0.85rem; margin-bottom: 6px; }
+    .tp-log-head button { background: none; border: 1px solid #4a3a14; color: #a89060;
+                          border-radius: 8px; padding: 4px 10px; font-family: inherit;
+                          white-space: nowrap; flex-shrink: 0; margin-left: 8px; }
+    .tp-log     { display: flex; flex-direction: column; gap: 4px; max-height: 40dvh; overflow-y: auto; }
+    .tp-item    { display: flex; gap: 8px; align-items: baseline; font-size: 0.85rem;
+                  padding: 6px 8px; border-radius: 8px; background: #141109; }
+    .tp-item .t { color: #8a7a55; flex: 0 0 3.2em; font-variant-numeric: tabular-nums; }
+    .tp-item .i { flex: 0 0 1.2em; }
+    .tp-item .n { flex: 1; color: #e8dcc0; word-break: break-all; }
+    @media (min-width: 768px) {
+      body.test-mode #testPanel { grid-column: 2; grid-row: 1 / span 2; max-width: none; }
+      .tp-name { font-size: 1.9rem; }
+    }
   </style>
 </head>
 <body>
@@ -614,6 +664,12 @@
     </div>
   </div>
 </header>
+
+<!-- テストモード（?test=1 で開いたときだけ表示） -->
+<div id="testBanner">
+  <span>🧪 テストモード　会員証を読み取っても<u>受付は記録されません</u></span>
+  <a href="./">通常の受付に戻る</a>
+</div>
 
 <div class="mode-tabs">
   <button class="mode-tab active" id="tabQr"     onclick="switchMode('qr')">📷 QRスキャン</button>
@@ -667,6 +723,20 @@
       </button>
     </div>
     <p class="status" id="status">カメラを起動中…</p>
+  </div>
+
+  <!-- テストモードの読み取り結果（?test=1 のときだけ表示） -->
+  <div id="testPanel">
+    <div class="tp-card" id="tpResult">
+      <p class="tp-empty">会員証をかざすと、どう読み取られるかがここに出ます</p>
+    </div>
+    <div class="tp-card">
+      <div class="tp-log-head">
+        <span>読み取った一覧（画面を閉じると消えます）</span>
+        <button onclick="clearTestLog()">クリア</button>
+      </div>
+      <div class="tp-log" id="tpLog"><p class="tp-empty">—</p></div>
+    </div>
   </div>
 
   <!-- 手入力モード（名前検索のみ） -->
@@ -755,7 +825,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.09.17-r52';
+  const VERSION     = '2026.09.17-r53';
+  // テストモード（URLに ?test=1）。会員証がどう読み取られるかを見るだけで、受付は一切記録しない。
+  // 通常の受付URLからは入れない（ボタンで切り替える作りにすると、受付中に付けっぱなしになり記録が消える）
+  const TEST_MODE   = new URLSearchParams(location.search).has('test');
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
@@ -1512,6 +1585,7 @@
 
   // ── 受付共通処理 ─────────────────────────────────────
   async function processCheckin(memberId, note = '会員証QR') {
+    if (TEST_MODE) return;   // 念のため：テストモードでは名前検索・名簿からも受付を記録しない
     const fullName = findMember(memberId) || '（名前なし）';
 
     pushHistory(fullName, memberId);
@@ -1541,8 +1615,97 @@
     }
   }
 
+  // ── テストモード：読み取り結果の確認 ─────────────────
+  // 会員証の発行ミス（別人の番号・存在しない番号・形式違い）を見つけるため。
+  // 判定は本番の受付と同じ extractMemberId() を使う（テスト用に判定を作り直さない）。
+  const testLog = [];
+  let   testSeq = 0;   // 回数券の応答が遅れて届いたとき、次のカードの表示に書かないため
+
+  function testFormatLabel(raw) {
+    const t = String(raw).trim();
+    if (/^sop:\d{6}$/i.test(t))    return '新しい会員証（sop:）';
+    if (/\/r\/\d{6}\/?$/.test(t))  return '旧い会員証（URL）';
+    if (/^\d{6}$/.test(t))         return '6桁の数字だけ';
+    return '会員証の形式ではない';
+  }
+
+  async function showTestResult(rawText) {
+    const id = extractMemberId(rawText);
+    const m  = (id && memberCache) ? memberCache[id] : null;
+
+    let level, verdict;
+    if (!id)                                  { level = 'ng';   verdict = '✕ 会員証として読み取れません'; }
+    else if (!memberCache)                    { level = 'warn'; verdict = '⚠ 会員データを読み込み中です（少し待ってもう一度）'; }
+    else if (!m)                              { level = 'ng';   verdict = '✕ 会員マスターに無い会員番号です'; }
+    else if (m.status2 && m.status2 !== '在籍') { level = 'warn'; verdict = '⚠ 在籍していない会員です（' + m.status2 + '）'; }
+    else                                      { level = 'ok';   verdict = '✓ 正しく読み取れます'; }
+
+    // 音でも分かるように（カードを続けて確認するとき画面を見なくて済む）
+    try { getCtx().resume().then(() => { level === 'ok' ? playBeep() : playError(); }); } catch (_) {}
+
+    const now  = new Date();
+    const time = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+    const kanji = m ? (m.nameKanji || '') : '';
+    const kana  = m ? (m.nameFurigana || ((m.lastName || '') + '　' + (m.firstName || ''))) : '';
+    const seq   = ++testSeq;
+
+    const row = (k, v, cls) =>
+      '<div class="tp-row"><span class="tp-k">' + esc(k) + '</span><span class="tp-v ' + (cls || '') + '">' + esc(v) + '</span></div>';
+
+    document.getElementById('tpResult').innerHTML =
+      '<div class="tp-verdict ' + level + '">' + esc(verdict) + '</div>' +
+      (m ? '<div class="tp-name">' + esc(kanji || kana) + '</div>'
+         + (kanji ? '<div class="tp-kana">' + esc(kana) + '</div>' : '') : '') +
+      row('読み取った内容', rawText, 'mono') +
+      row('形式', testFormatLabel(rawText)) +
+      row('会員番号', id || '—') +
+      (m ? row('状態', m.status2 || '—') : '') +
+      (m ? '<div class="tp-row"><span class="tp-k">回数券</span><span class="tp-v" id="tpTicket">確認中…</span></div>' : '') +
+      row('読み取り時刻', time);
+
+    testLog.unshift({ time: time.slice(0, 5), level, text: m ? (id + '　' + (kanji || kana)) : (id ? id + '（該当なし）' : String(rawText).slice(0, 60)) });
+    if (testLog.length > 200) testLog.length = 200;
+    renderTestLog();
+
+    if (!m) return;
+    // 回数券の状態（読み取り専用のAPI。残高には触らない）
+    try {
+      const res = await fetch(TICKET_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'scan', member_id: id })
+      });
+      const r = await res.json();
+      if (seq !== testSeq) return;
+      const el = document.getElementById('tpTicket');
+      if (!el) return;
+      el.textContent = !r.success          ? '取得できませんでした'
+                     : r.trial              ? '準備中'
+                     : !r.is_ticket_member  ? '月謝クラスのみ'
+                     : !r.has_digital       ? '回数券クラス在籍・紙のチケット'
+                     : '残り ' + r.remaining + ' 回';
+    } catch (_) {
+      if (seq !== testSeq) return;
+      const el = document.getElementById('tpTicket');
+      if (el) el.textContent = '取得できませんでした';
+    }
+  }
+
+  function renderTestLog() {
+    const el = document.getElementById('tpLog');
+    if (!testLog.length) { el.innerHTML = '<p class="tp-empty">—</p>'; return; }
+    const icon = { ok: '✓', warn: '⚠', ng: '✕' };
+    el.innerHTML = testLog.map(x =>
+      '<div class="tp-item"><span class="t">' + esc(x.time) + '</span>' +
+      '<span class="i tp-verdict ' + x.level + '" style="margin:0;font-size:inherit">' + icon[x.level] + '</span>' +
+      '<span class="n">' + esc(x.text) + '</span></div>'
+    ).join('');
+  }
+
+  function clearTestLog() { testLog.length = 0; renderTestLog(); }
+
   // ── QRスキャン処理 ───────────────────────────────────
   async function handleScan(rawText) {
+    if (TEST_MODE) { showTestResult(rawText); return; }   // テスト中は結果を見せるだけ（記録しない）
     const memberId = extractMemberId(rawText);
     // 会員証QR以外は完全に無視
     if (!memberId) return;
@@ -1667,6 +1830,10 @@
   // ── 起動 ─────────────────────────────────────────────
   warmupMembers();
   document.body.classList.add('mode-qr');
+  if (TEST_MODE) {
+    document.body.classList.add('test-mode');
+    document.title = '🧪テスト | ' + document.title;
+  }
   // 受付モードは時間割から自動で切り替える。前回の選択はつなぎとして復元しておく
   setReceptionMode(receptionMode, { byUser: false });
   loadClasses();                            // 時間割を読んで即反映
