@@ -222,6 +222,36 @@
     }
     .btn-clear:active { background: #1a1a24; }
 
+    /* ── いま受付中のクラスの名簿 ── */
+    /* カードを忘れた方は、検索より「その場にいるクラスから選ぶ」ほうが速い。
+       検索は名簿に出ない人（振替・別クラス）用に残してある。 */
+    #rosterPane { margin-bottom: 14px; }
+    .roster-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .roster-head #rosterTitle { font-size: 1.05rem; font-weight: 700; color: #cfe0f5; }
+    .roster-head #rosterReload {
+      margin-left: auto; background: #14243c; color: #7aa6d8; border: 1px solid #24405e;
+      border-radius: 8px; width: 34px; height: 30px; font-size: 1rem; cursor: pointer;
+    }
+    .roster-class { margin-bottom: 12px; }
+    .roster-class > h4 {
+      margin: 0 0 6px; font-size: .92rem; font-weight: 600; color: #7f97b5;
+      border-left: 3px solid #2f7ad0; padding-left: 8px;
+    }
+    .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .roster-btn {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      padding: 10px 12px; border-radius: 10px; cursor: pointer; text-align: left;
+      background: #16233a; border: 1px solid #27405f; color: #eaf2fb;
+      font-size: 1rem; line-height: 1.25; min-height: 52px;
+    }
+    .roster-btn:active { background: #1f3454; }
+    .roster-btn .rb-name { font-size: 1.05rem; }
+    /* 受付済みは押せるが、済んだことが一目で分かるようにする（二重受付の予防） */
+    .roster-btn.done { background: #12241a; border-color: #1f5c38; color: #7fc9a0; }
+    .roster-btn.done .rb-name { color: #7fc9a0; }
+    .roster-btn .rb-done { font-size: .74rem; color: #5fd08a; font-weight: 700; }
+    .roster-empty { color: #6c8099; font-size: .95rem; padding: 6px 2px; }
+
     /* ── 名前検索ペイン ── */
     #namePane { display: flex; flex-direction: column; gap: 10px; }
 
@@ -642,6 +672,15 @@
   <!-- 手入力モード（名前検索のみ） -->
   <div id="manualPanel">
 
+    <!-- いま受付中のクラスの名簿（カードを忘れた方はここから選ぶのが速い） -->
+    <div id="rosterPane">
+      <div class="roster-head">
+        <span id="rosterTitle">受付中のクラス</span>
+        <button id="rosterReload" onclick="reloadRosterAndMembers()" title="名簿と会員データを再読み込み">⟳</button>
+      </div>
+      <div id="rosterList"><p class="name-msg">読み込み中…</p></div>
+    </div>
+
     <!-- 名前検索ペイン -->
     <div id="namePane">
       <div class="np-left">
@@ -670,6 +709,9 @@
     <div id="historyList"><p class="hist-empty">—</p></div>
   </div>
   <p class="counter" id="counter">本日の受付: 0 件</p>
+  <p id="pendingBadge" style="display:none;margin:6px auto 0;max-width:520px;padding:8px 14px;
+     background:#33200f;color:#e0a060;border:1px solid #5c3c1f;border-radius:10px;
+     font-size:.95rem;text-align:center"></p>
 </div>
 
 <footer id="versionFooter"></footer>
@@ -713,11 +755,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.08.21-r50';
+  const VERSION     = '2026.09.17-r52';
   const GAS_URL     = 'https://script.google.com/macros/s/AKfycbztpKZ4IqnsHPdtK_7Fin3Fa6loGudSSaORdXlmEGT5qowt1xRy3VryTsBxo7lF0wBUrw/exec';
   const MEMBERS_API = 'https://sop-dance.com/member/api/members.php';
   const TICKET_API  = 'https://sop-dance.com/member/api/ticket.php';
   const CLASSES_API = 'https://sop-dance.com/member/api/classes.php';
+  const ROSTER_API  = 'https://sop-dance.com/member/api/class_roster.php';
 
   // ── 受付モード（月謝 / 回数券） ─────────────────────
   // 時間割から自動で切り替える。手で選んだときは、次にクラスが変わるまでその選択を優先する。
@@ -801,7 +844,8 @@
 
   // 回数券：残数をオーバーレイに表示する（読み取りだけ。消費は出欠管理のクラス確定で行う）
   async function logTicketScan(memberId, fullName) {
-    const el = document.getElementById('ovTicket');
+    const el  = document.getElementById('ovTicket');
+    const seq = overlaySeq;                 // 呼ばれた時点で表示しているのはこの人
     try {
       const res = await fetch(TICKET_API, {
         method: 'POST',
@@ -809,6 +853,7 @@
         body: JSON.stringify({ action: 'scan', member_id: memberId, member_name: fullName, class_label: '回数券クラス' })
       });
       const result = await res.json();
+      if (seq !== overlaySeq) return;       // 待っている間に次の人の表示に替わった → 書かない
       if (!result.success) throw new Error(result.message);
       // 試験運用中は残数を出さない（まだ回数を配っていないため）
       if (result.trial) {
@@ -845,6 +890,7 @@
         el.textContent = '⚠ 回数券の残りがありません（要購入）';
       }
     } catch (_) {
+      if (seq !== overlaySeq) return;       // 失敗の表示も、次の人の画面には出さない
       el.className = 'ov-ticket warn';
       el.textContent = '⚠ 回数券情報を取得できませんでした';
     }
@@ -857,6 +903,13 @@
   let memberCache   = null;
   let lastScanned   = '';
   let cooldownUntil = 0;
+  // 結果を表示している間は次の読み取りを受け付けない（月謝・回数券どちらも同じ間隔）。
+  // 以前は別の人のカードなら即座に読んでいたため、前の人の結果（回数券の残数など）が
+  // 0.5秒で次の人に上書きされていた。時刻で持つので、表示が固まっても読み取りは止まらない。
+  let scanPauseUntil = 0;
+  // 表示の通し番号。回数券の残数は遅れて届くので、待っている間に次の人へ替わっていたら書かない
+  //（Aさんの残数がBさんの画面に出ていた・2026-09-17 再現）
+  let overlaySeq = 0;
   let scanCount       = 0;
   let recentCheckins  = [];
   const MAX_HISTORY_SP  = 3;   // スマホ：3件
@@ -1011,6 +1064,7 @@
       startCamera();
     } else {
       stopCamera();
+      loadRoster();   // 手入力に切り替えたら、その時間のクラスの名簿を出す
       // 名前検索：iPadはフリックキーボード（左側常時表示）、スマホはネイティブキーボード
       clearNameSearch();        // 検索欄リセット＋候補一覧を初期表示
       if (!IS_IPAD) document.getElementById('nameInput').focus();
@@ -1042,17 +1096,43 @@
   }
 
   // ── 会員キャッシュ ──────────────────────────────────
+  // 起動時に1回だけ読む作りだと、開きっぱなしのiPadでは
+  // レッスン直前に入会した方がその日ずっと出てこない（2026-09-03 実際に発生）。
+  // 会員データはスプレッドシートから手で同期される＝受付中に増えることがあるので、
+  // 定期的に・画面に戻ってきたときにも取り直す。
+  let membersLoading  = false;
+  let membersLoadedAt = 0;
+
   async function warmupMembers() {
+    if (membersLoading) return;            // 復帰イベントが重なっても二重に走らせない
+    membersLoading = true;
     try {
-      const res = await fetch(MEMBERS_API);
+      const res = await fetch(MEMBERS_API, { cache: 'no-store' });
       const result = await res.json();
       if (result.success) {
+        // 取れたときだけ差し替える。通信に失敗しても手元の名簿は消さない
         memberCache = result.members;
+        membersLoadedAt = Date.now();
         const dot = document.getElementById('cacheDot');
         dot.classList.add('ready');
-        dot.title = '会員データ ' + Object.keys(memberCache).length + '件 読込済';
+        dot.title = '会員データ ' + Object.keys(memberCache).length + '件 読込済（'
+                  + new Date(membersLoadedAt).toLocaleTimeString('ja-JP',
+                      { hour: '2-digit', minute: '2-digit' }) + ' 時点）';
       }
     } catch (_) {}
+    membersLoading = false;
+  }
+
+  /** 画面に戻ったときの取り直し。戻る操作を連打されても叩きすぎないよう間隔を見る */
+  function refreshMembersIfStale(maxAgeMs) {
+    if (Date.now() - membersLoadedAt < maxAgeMs) return;
+    warmupMembers();
+  }
+
+  /** ⟳：名簿と会員データの両方を取り直す（新しい方が出ないときの手当て） */
+  function reloadRosterAndMembers() {
+    warmupMembers();
+    loadRoster(true);
   }
 
   function findMember(memberId) {
@@ -1061,6 +1141,64 @@
       return m.lastName + '　' + m.firstName;
     }
     return null;
+  }
+
+  // ── いま受付中のクラスの名簿 ──────────────────────────
+  // 「カードを忘れた方」は、全会員から検索するより、その時間のクラスから選ぶほうが速い。
+  // 受付済みの人も消さずに「✓受付済」で残す（誰がまだ来ていないか分かるように）。
+  let rosterCache   = null;   // 直近に取得した名簿
+  let rosterLoading = false;
+  const checkedToday = new Set();   // 今日この端末で受付した会員番号（表示用）
+
+  async function loadRoster(force) {
+    if (rosterLoading) return;
+    rosterLoading = true;
+    const box = document.getElementById('rosterList');
+    if (force) box.innerHTML = '<p class="name-msg">読み込み中…</p>';
+    try {
+      const res  = await fetch(ROSTER_API);
+      const data = await res.json();
+      if (data.success) rosterCache = data.classes;
+    } catch (_) {
+      // 取れなくても検索は使えるので、そのことだけ伝える
+      if (!rosterCache) box.innerHTML = '<p class="roster-empty">名簿を読み込めませんでした。下の検索をお使いください。</p>';
+    }
+    rosterLoading = false;
+    renderRoster();
+  }
+
+  function renderRoster() {
+    const box   = document.getElementById('rosterList');
+    const title = document.getElementById('rosterTitle');
+    if (!rosterCache) return;
+    if (!rosterCache.length) {
+      title.textContent = '受付中のクラス';
+      box.innerHTML = '<p class="roster-empty">いまの時間に受付中のクラスはありません。下の検索から探してください。</p>';
+      return;
+    }
+    const total = rosterCache.reduce((n, c) => n + c.members.length, 0);
+    title.textContent = '受付中のクラス（' + total + '名）';
+    box.innerHTML = rosterCache.map(c => {
+      if (!c.members.length) return '';
+      const hh = String(Math.floor(c.start / 60)).padStart(2, '0');
+      const mm = String(c.start % 60).padStart(2, '0');
+      const btns = c.members.map(m => {
+        const done = checkedToday.has(m.id);
+        return '<button class="roster-btn' + (done ? ' done' : '') + '" '
+             + 'onclick="selectMember(\'' + m.id + '\')">'
+             + '<span class="rb-name">' + esc(m.kana || m.name) + '</span>'
+             + (done ? '<span class="rb-done">✓ 受付済</span>' : '')
+             + '</button>';
+      }).join('');
+      return '<div class="roster-class"><h4>' + esc(c.short + ' ' + c.name) + '　' + hh + ':' + mm + '</h4>'
+           + '<div class="roster-grid">' + btns + '</div></div>';
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // ── 名前検索 ────────────────────────────────────────
@@ -1285,6 +1423,7 @@
     document.getElementById('ovWelcome').style.display = type === 'ok' ? '' : 'none';
     document.getElementById('ovSub').textContent       = '記録中…';
     document.getElementById('ovTicket').className      = 'ov-ticket'; // 一旦隠す（回数券モード時のみ表示）
+    document.getElementById('ovTicket').textContent    = '';          // 前の人の残数を持ち越さない
 
     icon.style.animation = 'none'; void icon.offsetWidth; icon.style.animation = '';
 
@@ -1293,6 +1432,8 @@
     prog.classList.remove('run'); void prog.offsetWidth; prog.classList.add('run');
 
     overlay.classList.add('visible');
+    overlaySeq++;                                   // この表示の番号（回数券の遅延応答の照合用）
+    scanPauseUntil = Date.now() + sec * 1000;       // 表示している間は次を読まない
     clearTimeout(dismissTimer);
     dismissTimer = setTimeout(hideOverlay, sec * 1000);
   }
@@ -1300,27 +1441,82 @@
   function hideOverlay() {
     overlay.classList.remove('visible');
     clearTimeout(dismissTimer);
+    scanPauseUntil = 0;                             // 閉じたら（自動でもタップでも）すぐ次を読める
   }
 
   overlay.addEventListener('click', hideOverlay);
 
   // ── GAS送信 ──────────────────────────────────────────
-  async function submitAttendance(memberId, fullName, note = '会員証QR') {
-    const params = new URLSearchParams({
-      action: 'submitAttendance',
-      name: (fullName || '（名前なし）') + '　' + memberId,
-      note
-    });
+  // 送信は1回きりだと、通信の瞬断やGASの一時エラーでその受付が永久に失われる。
+  // （実際に2026-08-25、1名分がシートに届かず記録が消えた）
+  // そこで①その場で数回リトライ ②それでも駄目なら端末に保存して後で自動再送する。
+  const PENDING_KEY = 'sop_checkin_pending';
+
+  function loadPending() {
+    try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function savePending(list) {
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify(list)); } catch (e) {}
+    updatePendingBadge();
+  }
+  function addPending(item) {
+    const list = loadPending();
+    list.push(item);
+    savePending(list);
+  }
+  function updatePendingBadge() {
+    const n  = loadPending().length;
+    const el = document.getElementById('pendingBadge');
+    if (!el) return;
+    el.textContent = n ? ('⚠ 未送信 ' + n + ' 件（自動再送中）') : '';
+    el.style.display = n ? 'block' : 'none';
+  }
+
+  // 1回分の送信（失敗すれば例外）
+  async function postAttendance(name, note) {
+    const params = new URLSearchParams({ action: 'submitAttendance', name, note });
     const res    = await fetch(GAS_URL + '?' + params);
     const result = await res.json();
     if (!result.success) throw new Error(result.message || '送信失敗');
   }
+
+  async function submitAttendance(memberId, fullName, note = '会員証QR') {
+    const name = (fullName || '（名前なし）') + '　' + memberId;
+    let lastErr = null;
+    for (let i = 0; i < 3; i++) {                 // その場で最大3回
+      try { await postAttendance(name, note); return; }
+      catch (e) { lastErr = e; await new Promise(r => setTimeout(r, 800 * (i + 1))); }
+    }
+    addPending({ name, note, at: Date.now() });   // 諦めずに端末へ退避
+    throw lastErr || new Error('送信失敗');
+  }
+
+  // 未送信分の再送（起動時・30秒ごと・オンライン復帰時）
+  let flushing = false;
+  async function flushPending() {
+    if (flushing || !navigator.onLine) return;
+    const list = loadPending();
+    if (!list.length) return;
+    flushing = true;
+    const rest = [];
+    for (const item of list) {
+      try { await postAttendance(item.name, item.note); }
+      catch (e) { rest.push(item); }
+    }
+    savePending(rest);
+    flushing = false;
+  }
+  setInterval(flushPending, 30000);
+  window.addEventListener('online', flushPending);
+  window.addEventListener('load', () => { updatePendingBadge(); flushPending(); });
 
   // ── 受付共通処理 ─────────────────────────────────────
   async function processCheckin(memberId, note = '会員証QR') {
     const fullName = findMember(memberId) || '（名前なし）';
 
     pushHistory(fullName, memberId);
+    checkedToday.add(String(memberId));   // 名簿の「✓受付済」に反映
+    renderRoster();
     scanCount++;
     document.getElementById('counter').textContent = '本日の受付: ' + scanCount + ' 件';
 
@@ -1340,7 +1536,8 @@
       await submitAttendance(memberId, fullName, note + (receptionMode === 'ticket' ? '・回数券' : ''));
       document.getElementById('ovSub').textContent = '✓ 記録完了';
     } catch (err) {
-      document.getElementById('ovSub').textContent = '⚠ 記録に失敗しました';
+      // 端末に保存済み。オンライン復帰後に自動で再送されるので受付は続けてよい
+      document.getElementById('ovSub').textContent = '⚠ 通信エラー（あとで自動送信します）';
     }
   }
 
@@ -1407,9 +1604,12 @@
     video.play().catch(() => {});          // 生きているのに止まっているだけなら再生し直す
     startTick();                           // 読み取りループも念のため起こす
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) resumeCameraIfNeeded(); });
-  window.addEventListener('pageshow', resumeCameraIfNeeded);   // 「戻る」での復元も拾う
-  window.addEventListener('focus',   resumeCameraIfNeeded);
+  // 復帰したらカメラだけでなく会員データも見直す。
+  // iPadは前の画面をそのまま復元するので、ここを逃すと起動処理が二度と走らない。
+  function onResume() { resumeCameraIfNeeded(); refreshMembersIfStale(60 * 1000); }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) onResume(); });
+  window.addEventListener('pageshow', onResume);   // 「戻る」での復元も拾う
+  window.addEventListener('focus',   onResume);
   // 念のための自己点検。上のどれも拾えなかった場合でも、5秒ごとに見て自力で戻す
   setInterval(() => { if (!document.hidden) resumeCameraIfNeeded(); }, 5000);
 
@@ -1450,6 +1650,7 @@
       st.className = 'status';
       st.textContent = '会員証QRをかざしてください';
     }
+    if (Date.now() < scanPauseUntil) return;   // 結果を表示中は読まない（両モード共通）
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx2d.drawImage(video, 0, 0);
@@ -1471,6 +1672,7 @@
   loadClasses();                            // 時間割を読んで即反映
   setInterval(applyAutoMode, 30 * 1000);    // 30秒ごとに時刻を見て切り替え
   setInterval(loadClasses, 30 * 60 * 1000); // 30分ごとに時間割を読み直す（変更に追従）
+  setInterval(warmupMembers, 5 * 60 * 1000); // 5分ごとに会員データを読み直す（入会に追従）
   if (IS_IPAD) {
     // iPad：インカメラ初期設定・キーボード生成・ネイティブキーボード抑制
     facingMode = 'user';
