@@ -387,12 +387,15 @@
     }
     .ov-icon.ok  { background:#7c6fff; box-shadow:0 0 40px #7c6fff80; }
     .ov-icon.err { background:#6f2020; box-shadow:0 0 40px #6f202080; }
+    /* 同じカードをもう一度かざした（記録しない）。成功と見分けがつくよう黄色 */
+    .ov-icon.warn { background:#d99a00; box-shadow:0 0 40px #d99a0080; }
     .ov-icon svg { width:32px; height:32px; stroke:#fff; stroke-width:3; fill:none; stroke-linecap:round; stroke-linejoin:round; }
     @keyframes popIn { 0%{transform:scale(0.5);opacity:0;} 100%{transform:scale(1);opacity:1;} }
 
     .ov-label { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
     .ov-label.ok  { color: #7c6fff; }
     .ov-label.err { color: #d06060; }
+    .ov-label.warn { color: #f0b400; }
 
     .ov-name {
       font-size: clamp(2rem, 10vw, 3.2rem);
@@ -825,7 +828,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  const VERSION     = '2026.09.17-r53';
+  const VERSION     = '2026.10.10-r55';
   // テストモード（URLに ?test=1）。会員証がどう読み取られるかを見るだけで、受付は一切記録しない。
   // 通常の受付URLからは入れない（ボタンで切り替える作りにすると、受付中に付けっぱなしになり記録が消える）
   const TEST_MODE   = new URLSearchParams(location.search).has('test');
@@ -969,6 +972,13 @@
     }
   }
   const OVERLAY_SEC = 2;
+  // 同じカードをこの時間内にもう一度かざしても受付として数えない（2026-10-03）。
+  // 以前は3秒たつと同じカードを再び受け付けていたため、姉のカードがカメラに残ったまま
+  // 次に並んだ妹の番に姉がもう一度記録され、妹の受付が抜けた（おぐろ姉妹・10/3 9:12）。
+  // シート全体でも、同じカードが3秒過ぎてから再び記録された例が150件あった。
+  // 連続受講の読み直しは1時間後なので、60秒なら影響しない。名前検索・名簿からの受付は対象外。
+  const SAME_CARD_IGNORE_MS = 60 * 1000;
+  const recentCards = {};   // 会員番号 => { at, name }
 
   document.getElementById('versionFooter').textContent = 'v' + VERSION;
 
@@ -976,10 +986,10 @@
   let memberCache   = null;
   let lastScanned   = '';
   let cooldownUntil = 0;
-  // 結果を表示している間は次の読み取りを受け付けない（月謝・回数券どちらも同じ間隔）。
-  // 以前は別の人のカードなら即座に読んでいたため、前の人の結果（回数券の残数など）が
-  // 0.5秒で次の人に上書きされていた。時刻で持つので、表示が固まっても読み取りは止まらない。
-  let scanPauseUntil = 0;
+  // ※ r52では「結果を表示している2秒間は次を読まない」としていたが、
+  //    次に並んだ人の「ピッ」が最大2秒遅れ、受付で「反応が遅い」と感じる原因になった（2026-10-10）。
+  //    同じカードの読み直しは cooldownUntil（3秒）と SAME_CARD_IGNORE_MS（60秒）で止まるので、
+  //    別の人のカードはその場で読む。回数券の残数の取り違えは overlaySeq で防いでいる。
   // 表示の通し番号。回数券の残数は遅れて届くので、待っている間に次の人へ替わっていたら書かない
   //（Aさんの残数がBさんの画面に出ていた・2026-09-17 再現）
   let overlaySeq = 0;
@@ -1460,6 +1470,30 @@
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(); osc.stop(ctx.currentTime + 0.3);
   }
+  // 読み取った瞬間に鳴らすための1本。
+  // 以前は resume() の then の中で鳴らしていたが、then は「いま走っている処理が全部終わってから」
+  // なので、履歴や名簿の描き直しのぶんだけ「ピッ」が遅れていた（Macで実測30ms・iPadではもっと遅い）。
+  // resume() は投げるだけにして（結果を待たない）、その場で鳴らす。
+  function playScanSound() {
+    try {
+      const ctx = getCtx();
+      if (ctx.state !== 'running') ctx.resume();   // 止まっていたら起こす（待たない）
+      playBass();
+      playBeep();
+    } catch (_) {}
+  }
+
+  // iPad/iPhoneは画面を触るまで音を出せない。触ったときに起こしておけば、
+  // その日の1人目の「ピッ」が遅れたり出なかったりしない
+  function warmAudio() {
+    try {
+      const ctx = getCtx();
+      if (ctx.state !== 'running') ctx.resume();
+    } catch (_) {}
+  }
+  document.addEventListener('touchstart', warmAudio, { passive: true });
+  document.addEventListener('click',      warmAudio);
+
   function playError() {
     const ctx = getCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.type = 'square';
@@ -1487,12 +1521,16 @@
       ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
       : '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 
+    if (type === 'warn') {
+      icon.innerHTML = '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="14"/><line x1="12" y1="19" x2="12" y2="19.5"/></svg>';
+    }
     const label = document.getElementById('ovLabel');
-    label.textContent = type === 'ok' ? '受付完了' : 'エラー';
+    label.textContent = type === 'ok' ? '受付完了' : (type === 'warn' ? '読み取り済み' : 'エラー');
     label.className   = 'ov-label ' + type;
 
     document.getElementById('ovName').textContent      = name || '';
     document.getElementById('ovMeta').textContent      = meta || '';
+    document.getElementById('ovMeta').style.color      = type === 'warn' ? '#f0b400' : '';   // 「次の方は…」を目立たせる
     document.getElementById('ovWelcome').style.display = type === 'ok' ? '' : 'none';
     document.getElementById('ovSub').textContent       = '記録中…';
     document.getElementById('ovTicket').className      = 'ov-ticket'; // 一旦隠す（回数券モード時のみ表示）
@@ -1506,7 +1544,6 @@
 
     overlay.classList.add('visible');
     overlaySeq++;                                   // この表示の番号（回数券の遅延応答の照合用）
-    scanPauseUntil = Date.now() + sec * 1000;       // 表示している間は次を読まない
     clearTimeout(dismissTimer);
     dismissTimer = setTimeout(hideOverlay, sec * 1000);
   }
@@ -1514,7 +1551,6 @@
   function hideOverlay() {
     overlay.classList.remove('visible');
     clearTimeout(dismissTimer);
-    scanPauseUntil = 0;                             // 閉じたら（自動でもタップでも）すぐ次を読める
   }
 
   overlay.addEventListener('click', hideOverlay);
@@ -1586,17 +1622,19 @@
   // ── 受付共通処理 ─────────────────────────────────────
   async function processCheckin(memberId, note = '会員証QR') {
     if (TEST_MODE) return;   // 念のため：テストモードでは名前検索・名簿からも受付を記録しない
-    const fullName = findMember(memberId) || '（名前なし）';
 
+    // 「ピッ」は何よりも先に。履歴・名簿・件数の描き直しを先にやると、
+    // そのぶん音が遅れて「かざしてから鳴るまでが長い」と感じる（2026-10-10）
+    playScanSound();
+    flashScreen();
+    if (navigator.vibrate) navigator.vibrate(200);
+
+    const fullName = findMember(memberId) || '（名前なし）';
     pushHistory(fullName, memberId);
     checkedToday.add(String(memberId));   // 名簿の「✓受付済」に反映
     renderRoster();
     scanCount++;
     document.getElementById('counter').textContent = '本日の受付: ' + scanCount + ' 件';
-
-    flashScreen();
-    if (navigator.vibrate) navigator.vibrate(200);
-    getCtx().resume().then(() => { playBass(); playBeep(); });
 
     showOverlay({ name: fullName, meta: '会員番号：' + memberId, type: 'ok' });
 
@@ -1641,7 +1679,11 @@
     else                                      { level = 'ok';   verdict = '✓ 正しく読み取れます'; }
 
     // 音でも分かるように（カードを続けて確認するとき画面を見なくて済む）
-    try { getCtx().resume().then(() => { level === 'ok' ? playBeep() : playError(); }); } catch (_) {}
+    try {                                        // テストモードの音も、待たずにその場で鳴らす
+      const actx = getCtx();
+      if (actx.state !== 'running') actx.resume();
+      level === 'ok' ? playBeep() : playError();
+    } catch (_) {}
 
     const now  = new Date();
     const time = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
@@ -1709,13 +1751,24 @@
     const memberId = extractMemberId(rawText);
     // 会員証QR以外は完全に無視
     if (!memberId) return;
+    // 同じカードを続けてかざした → 記録せず、鳴らさず、黄色で知らせる（次の人が「自分はまだ」と気づけるように）
+    const now  = Date.now();
+    const prev = recentCards[memberId];
+    if (prev && now - prev.at < SAME_CARD_IGNORE_MS) {
+      showOverlay({ name: prev.name + ' さん', meta: 'このカードは読み取り済みです。次の方はカードをかざしてください', type: 'warn' });
+      document.getElementById('ovSub').textContent = '（もう一度は記録していません）';
+      return;
+    }
+    recentCards[memberId] = { at: now, name: findMember(memberId) || '（名前なし）' };
     await processCheckin(memberId, '会員証QR');
   }
 
   // ── カメラ ───────────────────────────────────────────
   const video  = document.getElementById('video');
   const canvas = document.createElement('canvas');
-  const ctx2d  = canvas.getContext('2d');
+  // 毎フレーム getImageData で読み出すので willReadFrequently を付ける。
+  // 付けないとGPU側から読み戻すぶん1フレームが重くなる（ブラウザも警告を出す）＝読み取りが遅れる
+  const ctx2d  = canvas.getContext('2d', { willReadFrequently: true });
   let facingMode    = 'environment';
   let currentStream = null;
 
@@ -1769,7 +1822,7 @@
   }
   // 復帰したらカメラだけでなく会員データも見直す。
   // iPadは前の画面をそのまま復元するので、ここを逃すと起動処理が二度と走らない。
-  function onResume() { resumeCameraIfNeeded(); refreshMembersIfStale(60 * 1000); }
+  function onResume() { resumeCameraIfNeeded(); refreshMembersIfStale(60 * 1000); warmAudio(); }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) onResume(); });
   window.addEventListener('pageshow', onResume);   // 「戻る」での復元も拾う
   window.addEventListener('focus',   onResume);
@@ -1813,7 +1866,6 @@
       st.className = 'status';
       st.textContent = '会員証QRをかざしてください';
     }
-    if (Date.now() < scanPauseUntil) return;   // 結果を表示中は読まない（両モード共通）
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx2d.drawImage(video, 0, 0);
